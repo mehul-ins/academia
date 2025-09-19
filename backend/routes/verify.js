@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const verifyController = require('../controllers/verifyController');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // Configure Multer for file upload
 const storage = multer.memoryStorage(); // Store files in memory for processing
@@ -37,7 +38,7 @@ const upload = multer({
 /**
  * @route   POST /api/verify
  * @desc    Verify certificate authenticity
- * @access  Protected (requires authentication)
+ * @access  Public (no authentication required)
  * @body    file: Certificate image/PDF file
  */
 router.post('/', upload.single('certificate'), (req, res, next) => {

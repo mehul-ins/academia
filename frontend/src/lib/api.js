@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 // API utility functions
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 
@@ -5,6 +7,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 const apiRequest = async (endpoint, options = {}) => {
     try {
         const url = `${API_BASE_URL}${endpoint}`;
+
+        // Get current session for auth token
+        const { data: { session } } = await supabase.auth.getSession();
+
         const config = {
             headers: {
                 'Content-Type': 'application/json',
@@ -14,10 +20,44 @@ const apiRequest = async (endpoint, options = {}) => {
         };
 
         // Add auth token if available
-        const token = localStorage.getItem('authToken');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        if (session?.access_token) {
+            config.headers.Authorization = `Bearer ${session.access_token}`;
         }
+
+        const response = await fetch(url, config);
+
+        // Handle 401 errors by redirecting to login
+        if (response.status === 401) {
+            await supabase.auth.signOut();
+            // Don't redirect here as the App component will handle it
+            throw new Error('Authentication required');
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
+    }
+};
+
+// Public API request helper (no auth required)
+const publicApiRequest = async (endpoint, options = {}) => {
+    try {
+        const url = `${API_BASE_URL}${endpoint}`;
+
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+            ...options,
+        };
 
         const response = await fetch(url, config);
         const data = await response.json();
@@ -28,7 +68,7 @@ const apiRequest = async (endpoint, options = {}) => {
 
         return data;
     } catch (error) {
-        console.error('API request failed:', error);
+        console.error('Public API request failed:', error);
         throw error;
     }
 };
@@ -65,6 +105,29 @@ export const verificationAPI = {
             formData.append('certificate', fileOrId);
 
             return apiRequest('/api/verify', {
+                method: 'POST',
+                headers: {}, // Remove Content-Type to let browser set it for FormData
+                body: formData,
+            });
+        }
+    },
+};
+
+// Public Certificate Verification API (no auth required)
+export const publicVerificationAPI = {
+    verifyCertificate: async (fileOrId) => {
+        if (typeof fileOrId === 'string') {
+            // Certificate ID verification
+            return publicApiRequest('/api/verify', {
+                method: 'POST',
+                body: JSON.stringify({ certificateId: fileOrId }),
+            });
+        } else {
+            // File upload verification
+            const formData = new FormData();
+            formData.append('certificate', fileOrId);
+
+            return publicApiRequest('/api/verify', {
                 method: 'POST',
                 headers: {}, // Remove Content-Type to let browser set it for FormData
                 body: formData,

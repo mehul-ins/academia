@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { supabase } from '../lib/supabase';
 
 // API Configuration
-const API_BASE_URL = 'http://localhost:5002/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5002/api';
 
 // Create axios instance with default configuration
 const api = axios.create({
@@ -10,6 +11,33 @@ const api = axios.create({
         'Content-Type': 'application/json',
     },
 });
+
+// Add request interceptor to include auth token
+api.interceptors.request.use(
+    async (config) => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+            config.headers.Authorization = `Bearer ${session.access_token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Add response interceptor to handle auth errors
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (error.response?.status === 401) {
+            // Token expired or invalid, redirect to login
+            await supabase.auth.signOut();
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
 
 // API Service methods
 export const apiService = {

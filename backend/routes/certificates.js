@@ -2,6 +2,8 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const certificateController = require('../controllers/certificateController');
+const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
 
 // Configure Multer for CSV file upload
 const storage = multer.memoryStorage(); // Store files in memory for processing
@@ -41,6 +43,8 @@ const csvUpload = multer({
  * @body    file: CSV file with certificate data
  */
 router.post('/bulk',
+    authMiddleware,
+    roleMiddleware('admin'),
     csvUpload.single('csvFile'),
     (req, res, next) => {
         // Handle multer errors
@@ -64,14 +68,14 @@ router.post('/bulk',
  * @query   page: Page number (default: 1)
  * @query   limit: Records per page (default: 10)
  */
-router.get('/', certificateController.getAllCertificates);
+router.get('/', authMiddleware, certificateController.getAllCertificates);
 
 /**
  * @route   GET /api/certificates/:certificateId
  * @desc    Get certificate by ID
  * @access  Protected
  */
-router.get('/:certificateId', certificateController.getCertificateById);
+router.get('/:certificateId', authMiddleware, certificateController.getCertificateById);
 
 /**
  * @route   DELETE /api/certificates/:certificateId
@@ -79,6 +83,8 @@ router.get('/:certificateId', certificateController.getCertificateById);
  * @access  Protected (Admin only)
  */
 router.delete('/:certificateId',
+    authMiddleware,
+    roleMiddleware('admin'),
     certificateController.deleteCertificate
 );
 
