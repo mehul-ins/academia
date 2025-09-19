@@ -30,7 +30,7 @@ else
 fi
 
 # Check AI service health
-if curl -f http://localhost:5000/health > /dev/null 2>&1; then
+if curl -f http://localhost:5002/health > /dev/null 2>&1; then
     echo "✅ AI service health check passed"
 else
     echo "❌ AI service health check failed"
