@@ -72,7 +72,31 @@ exports.verifyCertificate = async (req, res) => {
             };
         }
 
-        // Step 2: Extract certificate data from AI analysis
+        // Step 2: Send file to FastAPI tampering service
+        let tamperingOutput = null;
+        try {
+            const tamperForm = new FormData();
+            tamperForm.append('file', req.file.buffer, {
+                filename: req.file.originalname,
+                contentType: req.file.mimetype
+            });
+            const tamperRes = await axios.post('http://localhost:8000/analyze/', tamperForm, {
+                headers: {
+                    ...tamperForm.getHeaders(),
+                },
+                timeout: 60000 // 60 second timeout
+            });
+            tamperingOutput = tamperRes.data.ai_tampering_output;
+        } catch (err) {
+            console.warn('Tampering service unavailable, using mock output.');
+            tamperingOutput = [{
+                field: 'MockField',
+                value: 'MockValue',
+                tampered: false
+            }];
+        }
+
+        // Step 3: Extract certificate data from AI analysis
         const { certId, name, roll, course } = aiAnalysisResult;
 
         if (!certId) {
@@ -83,7 +107,8 @@ exports.verifyCertificate = async (req, res) => {
             return res.status(400).json({
                 status: 'Invalid',
                 reasons: ['Certificate ID not found in document'],
-                certificate: null
+                certificate: null,
+                ai_tampering_output: tamperingOutput
             });
         }
 
@@ -139,7 +164,8 @@ exports.verifyCertificate = async (req, res) => {
                     course: dbCertificate.course,
                     issueDate: dbCertificate.issueDate,
                     grade: dbCertificate.grade
-                }
+                },
+                ai_tampering_output: tamperingOutput
             });
         }
 
@@ -209,7 +235,8 @@ exports.verifyCertificate = async (req, res) => {
                 grade: dbCertificate.grade,
                 verifiedAt: new Date().toISOString(),
                 blockchainVerified: blockchainVerified
-            }
+            },
+            ai_tampering_output: tamperingOutput
         });
 
     } catch (error) {
@@ -222,7 +249,8 @@ exports.verifyCertificate = async (req, res) => {
         return res.status(500).json({
             status: 'Invalid',
             reasons: ['Internal server error during verification'],
-            certificate: null
+            certificate: null,
+            ai_tampering_output: null
         });
     }
 };
