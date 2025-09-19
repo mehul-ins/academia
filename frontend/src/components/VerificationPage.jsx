@@ -1,100 +1,18 @@
 import { useState } from 'react';
 import {
   FiUploadCloud, FiFileText, FiCheckCircle, FiXCircle, FiAlertTriangle,
-  FiDatabase, FiBox, FiCpu, FiInfo, FiRefreshCw, FiShield
+  FiDatabase, FiBox, FiCpu, FiInfo, FiRefreshCw, FiShield, FiBarChart2, 
+  FiSearch, FiEye, FiAward
 } from 'react-icons/fi';
 import { verificationAPI } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
-const VerificationPage = () => {
+const VerificationPage = ({ onVerificationSuccess }) => {
+  const { isAuthenticated, isAdmin } = useAuth();
   const [verificationState, setVerificationState] = useState('initial'); // 'initial', 'loading', 'result'
   const [uploadedFile, setUploadedFile] = useState(null);
   const [certificateId, setCertificateId] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
-
-  // Mock verification results
-  const mockResults = {
-    valid: {
-      verdict: 'VALID',
-      icon: <FiCheckCircle className="w-16 h-16 mx-auto" />,
-      bgColor: 'bg-green-100',
-      textColor: 'text-green-800',
-      borderColor: 'border-green-500',
-      details: {
-        name: 'John Doe',
-        rollNo: 'CS21B1001',
-        certificateId: 'CERT-2024-001',
-        marks: '85%',
-        dateIssued: '2024-01-15',
-        issuingAuthority: 'Tech University'
-      },
-      ocrConfidence: 92,
-      checks: {
-        database: { status: 'Matched', icon: <FiCheckCircle className="text-green-500" />, success: true },
-        blockchain: { status: 'Valid', icon: <FiCheckCircle className="text-green-500" />, success: true },
-        aiScore: 0.15
-      },
-      reasons: [
-        'Certificate found in official database',
-        'Blockchain hash verification successful',
-        'AI tamper detection score below threshold',
-        'OCR extraction confidence high (92%)'
-      ]
-    },
-    forged: {
-      verdict: 'FORGED',
-      icon: <FiXCircle className="w-16 h-16 mx-auto" />,
-      bgColor: 'bg-red-100',
-      textColor: 'text-red-800',
-      borderColor: 'border-red-500',
-      details: {
-        name: 'Jane Smith',
-        rollNo: 'CS21B1002',
-        certificateId: 'CERT-2024-002',
-        marks: '95%',
-        dateIssued: '2024-02-20',
-        issuingAuthority: 'Tech University'
-      },
-      ocrConfidence: 78,
-      checks: {
-        database: { status: 'Mismatch', icon: <FiXCircle className="text-red-500" />, success: false },
-        blockchain: { status: 'Forged', icon: <FiXCircle className="text-red-500" />, success: false },
-        aiScore: 0.87
-      },
-      reasons: [
-        'AI detected high copy-move score (0.87)',
-        'Certificate hash not found on blockchain',
-        'Inconsistencies found in database records',
-        'Suspicious alterations detected in document structure'
-      ]
-    },
-    suspicious: {
-      verdict: 'SUSPICIOUS',
-      icon: <FiAlertTriangle className="w-16 h-16 mx-auto" />,
-      bgColor: 'bg-amber-100',
-      textColor: 'text-amber-800',
-      borderColor: 'border-amber-500',
-      details: {
-        name: 'Alex Johnson',
-        rollNo: 'CS21B1003',
-        certificateId: 'CERT-2024-003',
-        marks: '78%',
-        dateIssued: '2024-03-10',
-        issuingAuthority: 'Tech University'
-      },
-      ocrConfidence: 65,
-      checks: {
-        database: { status: 'No Record', icon: <FiXCircle className="text-red-500" />, success: false },
-        blockchain: { status: 'Not Registered', icon: <FiXCircle className="text-red-500" />, success: false },
-        aiScore: 0.45
-      },
-      reasons: [
-        'Certificate not found in database',
-        'No blockchain registration found',
-        'Moderate AI tamper score (0.45)',
-        'Low OCR confidence (65%) suggests poor quality or alterations'
-      ]
-    }
-  };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -139,6 +57,15 @@ const VerificationPage = () => {
       const transformedResult = transformBackendResponse(response);
       setVerificationResult(transformedResult);
       setVerificationState('result');
+
+      if (
+        transformedResult.verdict === 'VALID' &&
+        isAuthenticated &&
+        isAdmin()
+      ) {
+        // Optional: Automatically navigate, or wait for user to click
+        // onVerificationSuccess();
+      }
     } catch (error) {
       console.error('Verification failed:', error);
       // Show error result
@@ -232,247 +159,399 @@ const VerificationPage = () => {
   };
 
   return (
-    <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-screen bg-gray-50 font-sans">
       {verificationState === 'initial' && (
-        <>
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Hero Section */}
-          <div className="text-center mb-12">
-            <h2 className="text-5xl font-extrabold text-gray-900 mb-4">
+          <div className="text-center mb-16">
+            <div className="flex items-center justify-center mb-6">
+              <div className="bg-primary-600 p-4 rounded-2xl">
+                <FiShield className="w-12 h-12 text-white" />
+              </div>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-display font-bold text-gray-900 mb-6 text-balance">
               Verify Certificate Authenticity
-            </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Instantly confirm the validity of any certificate using a powerful combination of AI, Database, and Blockchain technologies.
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8 text-balance">
+              Instantly confirm the validity of any certificate using our advanced combination of 
+              AI analysis, database verification, and blockchain technology.
             </p>
+            
+            {/* Trust Indicators */}
+            <div className="flex items-center justify-center gap-8 mb-12">
+              <div className="flex items-center gap-2 text-gray-700">
+                <FiCpu className="text-primary-600" />
+                <span className="font-medium">AI Powered</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-700">
+                <FiDatabase className="text-primary-600" />
+                <span className="font-medium">Database Verified</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-700">
+                <FiBox className="text-primary-600" />
+                <span className="font-medium">Blockchain Secured</span>
+              </div>
+            </div>
           </div>
 
-          {/* Verification Card */}
-          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto border-t-4 border-blue-500">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-              Upload Certificate or Enter ID
-            </h3>
+          {/* Main Verification Card */}
+          <div className="max-w-2xl mx-auto">
+            <div className="card-elevated-lg p-8 mb-8">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-display font-bold text-gray-900 mb-2">
+                  Verify Your Certificate
+                </h2>
+                <p className="text-gray-600">
+                  Upload your certificate or enter the Certificate ID
+                </p>
+              </div>
 
-            {/* Upload Section */}
-            <div className="mb-6">
-              <div
-                className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 cursor-pointer"
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onClick={() => document.querySelector('input[type="file"]').click()}
-              >
-                <div className="space-y-3">
-                  <FiUploadCloud className="w-12 h-12 mx-auto text-gray-400" />
-                  <div>
-                    <p className="text-lg font-semibold text-gray-800">Drop your file here or <span className="text-blue-600">browse</span></p>
-                    <p className="text-sm text-gray-500">PDF, JPG, PNG supported (max 5MB)</p>
-                  </div>
-                  {uploadedFile && (
-                    <div className="text-sm text-green-600 font-medium flex items-center justify-center space-x-2 pt-2">
-                      <FiFileText />
-                      <span>Selected: {uploadedFile.name}</span>
+              {/* File Upload Section */}
+              <div className="mb-8">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Upload Certificate File
+                </label>
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-primary-400 hover:bg-primary-50 transition-all duration-300 cursor-pointer group"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onClick={() => document.querySelector('input[type="file"]').click()}
+                >
+                  <div className="space-y-4">
+                    <div className="flex justify-center">
+                      <FiUploadCloud className="w-16 h-16 text-gray-400 group-hover:text-primary-500 transition-colors" />
                     </div>
-                  )}
+                    <div>
+                      <p className="text-lg font-semibold text-gray-800 mb-1">
+                        Drop your certificate here or <span className="text-primary-600">browse files</span>
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Supports PDF, JPG, PNG files (max 10MB)
+                      </p>
+                    </div>
+                    {uploadedFile && (
+                      <div className="inline-flex items-center gap-3 bg-green-100 text-green-800 px-4 py-2 rounded-lg font-medium">
+                        <FiFileText className="w-4 h-4" />
+                        <span>Selected: {uploadedFile.name}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileUpload}
+                />
+              </div>
+
+              {/* OR Divider */}
+              <div className="relative my-8">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-6 bg-white text-gray-500 font-semibold tracking-wider uppercase">
+                    Or
+                  </span>
                 </div>
               </div>
-            </div>
 
-            {/* OR Separator */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+              {/* Certificate ID Input */}
+              <div className="mb-8">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Enter Certificate ID
+                </label>
+                <div className="relative">
+                  <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    className="input-field pl-12 text-lg"
+                    placeholder="e.g., CERT-2024-001"
+                    value={certificateId}
+                    onChange={(e) => {
+                      setCertificateId(e.target.value);
+                      if (e.target.value.trim()) {
+                        setUploadedFile(null);
+                      }
+                    }}
+                  />
+                </div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500 font-semibold uppercase">OR</span>
-              </div>
+
+              {/* Verify Button */}
+              <button
+                onClick={handleVerify}
+                disabled={!uploadedFile && !certificateId.trim()}
+                className="w-full btn-primary text-lg py-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              >
+                <FiShield className="w-5 h-5" />
+                Verify Certificate
+              </button>
             </div>
 
-            {/* Input Section */}
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter Certificate ID
-              </label>
-              <input
-                type="text"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-                placeholder="e.g., CERT-2024-001"
-                value={certificateId}
-                onChange={(e) => {
-                  setCertificateId(e.target.value);
-                  if (e.target.value.trim()) {
-                    setUploadedFile(null);
-                  }
-                }}
-              />
+            {/* Secondary Action */}
+            <div className="text-center">
+              <a
+                href="#institutes"
+                className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium transition-colors"
+              >
+                <FiEye className="w-4 h-4" />
+                View Verified Institutes
+              </a>
             </div>
-
-            {/* Verify Button */}
-            <button
-              onClick={handleVerify}
-              disabled={!uploadedFile && !certificateId.trim()}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
-            >
-              Verify Certificate
-            </button>
           </div>
-        </>
+        </main>
       )}
 
       {verificationState === 'loading' && (
-        <div className="text-center py-16">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
-          <h3 className="text-2xl font-semibold text-gray-900 mb-2">
-            Verifying Certificate...
-          </h3>
-          <p className="text-gray-600">
-            Running AI analysis, database lookup, and blockchain verification. Please wait.
-          </p>
-        </div>
+        <main className="min-h-screen flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            <div className="mb-8">
+              <div className="loading-spinner mx-auto mb-6"></div>
+              <div className="space-y-2">
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary-600 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                </div>
+              </div>
+            </div>
+            <h3 className="text-2xl font-display font-bold text-gray-900 mb-4">
+              Verifying Certificate...
+            </h3>
+            <div className="space-y-2 text-gray-600">
+              <p className="flex items-center justify-center gap-2">
+                <FiCpu className="w-4 h-4 text-primary-600" />
+                AI analysis in progress
+              </p>
+              <p className="flex items-center justify-center gap-2">
+                <FiDatabase className="w-4 h-4 text-primary-600" />
+                Checking database records
+              </p>
+              <p className="flex items-center justify-center gap-2">
+                <FiBox className="w-4 h-4 text-primary-600" />
+                Verifying blockchain hash
+              </p>
+            </div>
+          </div>
+        </main>
       )}
+
+
 
       {verificationState === 'result' && verificationResult && (
-        <div className="space-y-8">
-          {/* Verdict Card */}
-          <div className={`${verificationResult.bgColor} ${verificationResult.borderColor} border-l-8 rounded-lg p-6 text-center shadow-lg`}>
-            <div className={`${verificationResult.textColor} mb-4`}>{verificationResult.icon}</div>
-            <h2 className={`text-4xl font-bold ${verificationResult.textColor}`}>
-              Certificate is {verificationResult.verdict}
-            </h2>
-            <p className={`text-lg opacity-90 mt-2 ${verificationResult.textColor}`}>
-              Verification completed using multiple security checks.
-            </p>
-          </div>
-
-          {/* Extracted Details Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-              <FiFileText className="mr-3 text-blue-600" />
-              Extracted Certificate Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Name</span>
-                  <p className="text-gray-900 font-semibold">{verificationResult.details.name}</p>
+        <main className="min-h-screen bg-gray-50 py-12">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="space-y-8 fade-in">
+              {/* Verdict Card */}
+              <div className={`card-elevated-lg p-8 text-center border-l-8 ${
+                verificationResult.verdict === 'VALID' ? 'status-valid border-success-500' :
+                verificationResult.verdict === 'FORGED' ? 'status-forged border-danger-500' :
+                'status-suspicious border-warning-500'
+              }`}>
+                <div className="mb-6">
+                  {verificationResult.verdict === 'VALID' ? (
+                    <FiCheckCircle className="w-20 h-20 mx-auto text-success-600" />
+                  ) : verificationResult.verdict === 'FORGED' ? (
+                    <FiXCircle className="w-20 h-20 mx-auto text-danger-600" />
+                  ) : (
+                    <FiAlertTriangle className="w-20 h-20 mx-auto text-warning-600" />
+                  )}
                 </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Roll No</span>
-                  <p className="text-gray-900 font-semibold">{verificationResult.details.rollNo}</p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Certificate ID</span>
-                  <p className="text-gray-900 font-semibold">{verificationResult.details.certificateId}</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Marks</span>
-                  <p className="text-gray-900 font-semibold">{verificationResult.details.marks}</p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Date Issued</span>
-                  <p className="text-gray-900 font-semibold">{verificationResult.details.dateIssued}</p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Issuing Authority</span>
-                  <p className="text-gray-900 font-semibold">{verificationResult.details.issuingAuthority}</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <span className="text-sm font-medium text-gray-500">OCR Confidence</span>
-              <div className="flex items-center mt-1">
-                <div className="flex-1 bg-gray-200 rounded-full h-2.5 mr-3">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{ width: `${verificationResult.ocrConfidence}%` }}
-                  ></div>
-                </div>
-                <span className="text-sm font-semibold text-gray-800">
-                  {verificationResult.ocrConfidence}%
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Verification Checks Summary Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-              <FiShield className="mr-3 text-blue-600" />
-              Verification Breakdown
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center">
-                  <FiDatabase className="mr-3 text-gray-600" />
-                  <span className="font-semibold text-gray-800">Database Check</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={`font-semibold ${verificationResult.checks.database.success ? 'text-green-600' : 'text-red-600'}`}>
-                    {verificationResult.checks.database.status}
+                <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">
+                  Certificate is{' '}
+                  <span className={
+                    verificationResult.verdict === 'VALID' ? 'text-success-700' :
+                    verificationResult.verdict === 'FORGED' ? 'text-danger-700' :
+                    'text-warning-700'
+                  }>
+                    {verificationResult.verdict}
                   </span>
-                  <span className="text-xl">{verificationResult.checks.database.icon}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center">
-                  <FiBox className="mr-3 text-gray-600" />
-                  <span className="font-semibold text-gray-800">Blockchain Check</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={`font-semibold ${verificationResult.checks.blockchain.success ? 'text-green-600' : 'text-red-600'}`}>
-                    {verificationResult.checks.blockchain.status}
-                  </span>
-                  <span className="text-xl">{verificationResult.checks.blockchain.icon}</span>
-                </div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <FiCpu className="mr-3 text-gray-600" />
-                    <span className="font-semibold text-gray-800">AI Tamper Score</span>
+                </h1>
+                <p className="text-lg text-gray-600 mb-6">
+                  Verification completed using multi-layer security analysis
+                </p>
+                
+                {/* Trust Score - if valid */}
+                {verificationResult.verdict === 'VALID' && (
+                  <div className="inline-flex items-center gap-3 bg-success-100 text-success-800 px-6 py-3 rounded-xl font-semibold text-lg">
+                    <FiAward className="w-6 h-6" />
+                    <span>Trust Score: 98%</span>
                   </div>
-                  <span className="text-sm font-semibold text-gray-700">
-                    {verificationResult.checks.aiScore.toFixed(2)} - {getAiScoreText(verificationResult.checks.aiScore)}
-                  </span>
+                )}
+              </div>
+
+              {/* Extracted Details Card */}
+              <div className="card-elevated p-6">
+                <h3 className="text-xl font-display font-bold text-gray-900 mb-6 flex items-center">
+                  <FiFileText className="mr-3 text-primary-600 w-6 h-6" />
+                  Certificate Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.name || 'Not available'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Roll Number</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.rollNo || 'Not available'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Certificate ID</label>
+                      <p className="text-lg font-medium text-gray-900 font-mono">{verificationResult.details.certificateId || 'Not available'}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Marks/Grade</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.marks || 'Not available'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Date Issued</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.dateIssued || 'Not available'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Issuing Authority</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.issuingAuthority || 'Not available'}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className={`h-3 rounded-full ${getAiScoreColor(verificationResult.checks.aiScore)}`}
-                    style={{ width: `${verificationResult.checks.aiScore * 100}%` }}
-                  ></div>
+                
+                {/* OCR Confidence */}
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide">OCR Confidence</label>
+                    <span className="text-sm font-bold text-gray-800">{verificationResult.ocrConfidence || 0}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div
+                      className="bg-primary-600 h-3 rounded-full transition-all duration-500"
+                      style={{ width: `${verificationResult.ocrConfidence || 0}%` }}
+                    ></div>
+                  </div>
                 </div>
+              </div>
+
+              {/* Verification Breakdown Card */}
+              <div className="card-elevated p-6">
+                <h3 className="text-xl font-display font-bold text-gray-900 mb-6 flex items-center">
+                  <FiShield className="mr-3 text-primary-600 w-6 h-6" />
+                  Security Verification Breakdown
+                </h3>
+                <div className="space-y-4">
+                  {/* Database Check */}
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center">
+                      <div className="bg-white p-3 rounded-lg mr-4">
+                        <FiDatabase className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">Database Verification</h4>
+                        <p className="text-sm text-gray-600">Official records check</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className={`font-semibold ${verificationResult.checks.database.success ? 'text-success-600' : 'text-danger-600'}`}>
+                        {verificationResult.checks.database.status}
+                      </span>
+                      <div className="text-2xl">{verificationResult.checks.database.icon}</div>
+                    </div>
+                  </div>
+
+                  {/* Blockchain Check */}
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center">
+                      <div className="bg-white p-3 rounded-lg mr-4">
+                        <FiBox className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">Blockchain Verification</h4>
+                        <p className="text-sm text-gray-600">Immutable hash validation</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className={`font-semibold ${verificationResult.checks.blockchain.success ? 'text-success-600' : 'text-danger-600'}`}>
+                        {verificationResult.checks.blockchain.status}
+                      </span>
+                      <div className="text-2xl">{verificationResult.checks.blockchain.icon}</div>
+                    </div>
+                  </div>
+
+                  {/* AI Tamper Detection */}
+                  <div className="p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <div className="bg-white p-3 rounded-lg mr-4">
+                          <FiCpu className="w-6 h-6 text-gray-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">AI Tamper Detection</h4>
+                          <p className="text-sm text-gray-600">Document integrity analysis</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-gray-800">
+                          Score: {verificationResult.checks.aiScore.toFixed(2)}
+                        </div>
+                        <div className={`text-sm font-semibold ${getAiScoreColor(verificationResult.checks.aiScore).replace('bg-', 'text-').replace('500', '600')}`}>
+                          {getAiScoreText(verificationResult.checks.aiScore)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className={`h-3 rounded-full transition-all duration-500 ${getAiScoreColor(verificationResult.checks.aiScore)}`}
+                        style={{ width: `${verificationResult.checks.aiScore * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Explainable Reasons Card */}
+              <div className="card-elevated p-6">
+                <h3 className="text-xl font-display font-bold text-gray-900 mb-6 flex items-center">
+                  <FiInfo className="mr-3 text-primary-600 w-6 h-6" />
+                  Verification Explanation
+                </h3>
+                <div className="space-y-4">
+                  {verificationResult.reasons && verificationResult.reasons.map((reason, index) => (
+                    <div key={index} className="flex items-start">
+                      <div className={`w-3 h-3 rounded-full mt-2 mr-4 flex-shrink-0 ${
+                        verificationResult.verdict === 'VALID' ? 'bg-success-500' :
+                        verificationResult.verdict === 'FORGED' ? 'bg-danger-500' :
+                        'bg-warning-500'
+                      }`}></div>
+                      <p className="text-gray-700 leading-relaxed">{reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button
+                  onClick={resetVerification}
+                  className="btn-secondary"
+                >
+                  <FiRefreshCw className="w-5 h-5" />
+                  <span>Verify Another Certificate</span>
+                </button>
+                {verificationResult.verdict === 'VALID' && onVerificationSuccess && (
+                  <button
+                    onClick={onVerificationSuccess}
+                    className="btn-success"
+                  >
+                    <FiBarChart2 className="w-5 h-5" />
+                    <span>View Trust Score Analytics</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
-
-          {/* Explainable Reasons Card */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-              <FiInfo className="mr-3 text-blue-600" />
-              Reasons for Verdict
-            </h3>
-            <ul className="space-y-3">
-              {verificationResult.reasons.map((reason, index) => (
-                <li key={index} className="flex items-start">
-                  <span className={`w-2 h-2 rounded-full mt-1.5 mr-3 flex-shrink-0 ${verificationResult.textColor.replace('text-', 'bg-').replace('800', '500')}`}></span>
-                  <span className="text-gray-700">{reason}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Action Button */}
-          <div className="text-center">
-            <button
-              onClick={resetVerification}
-              className="bg-emerald-500 text-white py-3 px-8 rounded-lg font-semibold text-lg hover:bg-emerald-600 transition-all transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300 flex items-center justify-center mx-auto space-x-2"
-            >
-              <FiRefreshCw />
-              <span>Verify Another Certificate</span>
-            </button>
-          </div>
-        </div>
+        </main>
       )}
-    </main>
+    </div>
   );
 }
 

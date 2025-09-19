@@ -1,1 +1,240 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+/* CertiVerify Design System */
+:root {
+  /* Primary Colors */
+  --primary-blue: #2563eb; /* blue-600 */
+  --primary-blue-light: #3b82f6; /* blue-500 */
+  --primary-blue-dark: #1d4ed8; /* blue-700 */
+  
+  /* Status Colors */
+  --success-green: #10b981; /* green-500 */
+  --success-green-light: #34d399; /* green-400 */
+  --success-green-dark: #059669; /* green-600 */
+  
+  --warning-amber: #f59e0b; /* amber-500 */
+  --warning-amber-light: #fbbf24; /* amber-400 */
+  --warning-amber-dark: #d97706; /* amber-600 */
+  
+  --danger-red: #ef4444; /* red-500 */
+  --danger-red-light: #f87171; /* red-400 */
+  --danger-red-dark: #dc2626; /* red-600 */
+  
+  /* Neutral Colors */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+}
+
+/* Base Typography */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  font-variation-settings: 'opsz' 32;
+  color: var(--gray-800);
+  background-color: var(--gray-50);
+  line-height: 1.6;
+}
+
+/* Custom utility classes */
+.font-display {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.font-body {
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Custom status colors */
+.status-valid {
+  color: var(--success-green-dark);
+  background-color: rgb(220 252 231); /* green-100 */
+  border-color: var(--success-green);
+}
+
+.status-forged {
+  color: var(--danger-red-dark);
+  background-color: rgb(254 226 226); /* red-100 */
+  border-color: var(--danger-red);
+}
+
+.status-suspicious {
+  color: var(--warning-amber-dark);
+  background-color: rgb(255 243 179); /* amber-100 */
+  border-color: var(--warning-amber);
+}
+
+/* Professional card styles */
+.card-elevated {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border: 1px solid var(--gray-200);
+}
+
+.card-elevated-lg {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  border: 1px solid var(--gray-200);
+}
+
+/* Button styles */
+.btn-primary {
+  background-color: var(--primary-blue);
+  color: white;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-blue-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgb(37 99 235 / 0.3);
+}
+
+.btn-secondary {
+  background-color: white;
+  color: var(--gray-700);
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid var(--gray-300);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-secondary:hover {
+  background-color: var(--gray-50);
+  border-color: var(--gray-400);
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background-color: var(--success-green);
+  color: white;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-success:hover {
+  background-color: var(--success-green-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgb(16 185 129 / 0.3);
+}
+
+/* Input styles */
+.input-field {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  background-color: white;
+  font-size: 16px;
+  transition: all 0.2s ease-in-out;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+}
+
+/* Loading animation */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--gray-200);
+  border-top: 4px solid var(--primary-blue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive breakpoints utilities */
+@media (max-width: 640px) {
+  .mobile-full {
+    width: 100%;
+  }
+  
+  .mobile-px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Professional animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Trust indicators */
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--success-green);
+  color: white;
+}
+
+.trust-badge::before {
+  content: "✓";
+  font-weight: bold;
+}

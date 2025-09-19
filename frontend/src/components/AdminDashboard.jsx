@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiList, FiDatabase, FiBarChart2 } from 'react-icons/fi';
 import LogsView from './LogsView';
 import DataManagementView from './DataManagementView';
 import AnalyticsView from './AnalyticsView';
 
-const AdminDashboard = () => {
-  const [adminView, setAdminView] = useState('logs'); // 'logs', 'data', 'analytics'
+const AdminDashboard = ({ initialView = 'logs' }) => {
+  const [adminView, setAdminView] = useState(initialView); // 'logs', 'data', 'analytics'
+
+  useEffect(() => {
+    setAdminView(initialView);
+  }, [initialView]);
 
   const AdminNavLink = ({ viewName, icon, children }) => {
     const isActive = adminView === viewName;

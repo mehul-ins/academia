@@ -7,6 +7,7 @@ import LoginPage from './components/LoginPage';
 
 const AppContent = () => {
   const [page, setPage] = useState('verify'); // 'verify' or 'admin'
+  const [adminInitialView, setAdminInitialView] = useState('logs');
   const { user, logout, isAdmin, isAuthenticated, loading } = useAuth();
 
   if (loading) {
@@ -20,6 +21,18 @@ const AppContent = () => {
     );
   }
 
+  const handleVerificationSuccess = () => {
+    // If not authenticated, redirect to login first
+    if (!isAuthenticated) {
+      setPage('admin'); // This will trigger the login page
+      setAdminInitialView('analytics');
+    } else {
+      // If authenticated, go directly to analytics
+      setPage('admin');
+      setAdminInitialView('analytics');
+    }
+  };
+
   // Show admin login for admin pages if not authenticated
   if (page === 'admin' && !isAuthenticated) {
     return <LoginPage />;
@@ -31,9 +44,9 @@ const AppContent = () => {
     // If admin page is required but user is not admin, show disabled state
     if (requiresAuth && isAuthenticated && !isAdmin()) {
       return (
-        <span className="font-semibold pb-2 flex items-center space-x-2 text-gray-400 cursor-not-allowed">
+        <span className="flex items-center space-x-2 text-gray-400 cursor-not-allowed font-medium">
           {children}
-          <span className="text-xs">(Admin Only)</span>
+          <span className="text-xs bg-gray-100 px-2 py-1 rounded">(Admin Only)</span>
         </span>
       );
     }
@@ -45,10 +58,11 @@ const AppContent = () => {
           e.preventDefault();
           setPage(pageName);
         }}
-        className={`font-semibold pb-2 flex items-center space-x-2 ${isActive
-            ? 'text-blue-600 border-b-2 border-blue-600'
-            : 'text-gray-600 hover:text-gray-800'
-          }`}
+        className={`flex items-center space-x-2 font-medium px-4 py-2 rounded-lg transition-all duration-200 ${
+          isActive
+            ? 'bg-primary-600 text-white shadow-trust'
+            : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
+        }`}
       >
         {children}
       </a>
@@ -56,44 +70,53 @@ const AppContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 font-montserrat">
+    <div className="min-h-screen bg-gray-50 font-sans">
       {/* Header */}
-      <header className="bg-white shadow-md sticky top-0 z-50">
+      <header className="bg-white shadow-soft sticky top-0 z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            <div className="flex items-center space-x-3">
-              <FiShield className="w-8 h-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-800">Academia</h1>
+            <div className="flex items-center space-x-4">
+              <div className="bg-primary-600 p-2 rounded-xl">
+                <FiShield className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-display font-bold text-gray-900">CertiVerify</h1>
+                <p className="text-xs text-gray-500 font-medium">Trusted Certificate Verification</p>
+              </div>
             </div>
 
             <nav className="flex items-center space-x-8">
               <NavLink pageName="verify">
-                <FiCheckCircle />
+                <FiCheckCircle className="w-5 h-5" />
                 <span>Verify Certificate</span>
               </NavLink>
               <NavLink pageName="admin" requiresAuth={true}>
-                <FiGrid />
-                <span>Admin Dashboard</span>
+                <FiGrid className="w-5 h-5" />
+                <span>Dashboard</span>
               </NavLink>
 
               {/* User Info and Logout */}
               {isAuthenticated && (
                 <div className="flex items-center space-x-4 ml-8 pl-8 border-l border-gray-200">
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <FiUser className="w-4 h-4" />
-                    <span className="text-sm font-medium">{user.email}</span>
-                    {isAdmin() && (
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                        Admin
-                      </span>
-                    )}
+                  <div className="flex items-center space-x-3 text-gray-700">
+                    <div className="bg-gray-100 p-2 rounded-lg">
+                      <FiUser className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{user.email}</p>
+                      {isAdmin() && (
+                        <span className="trust-badge text-xs">
+                          Admin
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <button
                     onClick={() => {
                       logout();
                       setPage('verify');
                     }}
-                    className="flex items-center space-x-1 text-gray-600 hover:text-red-600 transition-colors"
+                    className="flex items-center space-x-2 text-gray-600 hover:text-danger-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
                   >
                     <FiLogOut className="w-4 h-4" />
                     <span className="text-sm font-medium">Logout</span>
@@ -105,7 +128,11 @@ const AppContent = () => {
         </div>
       </header>
 
-      {page === 'verify' ? <VerificationPage /> : <AdminDashboard />}
+      {page === 'verify' ? (
+        <VerificationPage onVerificationSuccess={handleVerificationSuccess} />
+      ) : (
+        <AdminDashboard initialView={adminInitialView} />
+      )}
     </div>
   );
 };
