@@ -7,6 +7,14 @@ module.exports = (sequelize) => {
             primaryKey: true,
             unique: true,
         },
+        institutionId: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            references: {
+                model: 'Users',
+                key: 'instituteId'
+            }
+        },
         studentName: DataTypes.STRING,
         rollNumber: DataTypes.STRING,
         course: DataTypes.STRING,
@@ -29,6 +37,27 @@ module.exports = (sequelize) => {
         blacklisted: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
+        },
+        // Additional fields for enhanced certificate management
+        fileUrl: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        fileType: {
+            type: DataTypes.STRING,
+            allowNull: true,
+        },
+        ocrData: {
+            type: DataTypes.JSON,
+            allowNull: true,
+        },
+        verificationCount: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0,
+        },
+        lastVerified: {
+            type: DataTypes.DATE,
+            allowNull: true,
         },
     });
     return Certificate;

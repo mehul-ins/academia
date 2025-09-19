@@ -4,9 +4,9 @@ import {
   FiDatabase, FiBox, FiCpu, FiInfo, FiRefreshCw, FiShield, FiBarChart2,
   FiSearch, FiEye, FiAward
 } from 'react-icons/fi';
-import { verificationAPI } from '../lib/api';
+import { verificationAPI, publicVerificationAPI } from '../lib/api';
 
-const VerificationPage = ({ onVerificationSuccess }) => {
+const VerificationPage = ({ onVerificationSuccess, onShowRegister }) => {
   const [verificationState, setVerificationState] = useState('initial'); // 'initial', 'loading', 'result'
   const [uploadedFile, setUploadedFile] = useState(null);
   const [certificateId, setCertificateId] = useState('');
@@ -45,10 +45,10 @@ const VerificationPage = ({ onVerificationSuccess }) => {
       let response;
       if (certificateId.trim()) {
         // Verify by certificate ID
-        response = await verificationAPI.verifyCertificate(certificateId.trim());
+        response = await publicVerificationAPI.verifyCertificate(certificateId.trim());
       } else {
         // Verify by file upload
-        response = await verificationAPI.verifyCertificate(uploadedFile);
+        response = await publicVerificationAPI.verifyCertificate(uploadedFile);
       }
 
       // Transform backend response to frontend format
@@ -71,6 +71,19 @@ const VerificationPage = ({ onVerificationSuccess }) => {
         borderColor: 'border-yellow-500',
         details: {
           error: error.message || 'Verification failed'
+        },
+        checks: {
+          database: {
+            status: 'Connection Failed',
+            icon: <FiXCircle className="text-red-500" />,
+            success: false
+          },
+          blockchain: {
+            status: 'Unavailable',
+            icon: <FiXCircle className="text-red-500" />,
+            success: false
+          },
+          aiScore: 0
         },
         reasons: ['API connection failed', 'Please try again later']
       });
@@ -285,8 +298,8 @@ const VerificationPage = ({ onVerificationSuccess }) => {
               {/* ...existing code... */}
             </div>
 
-            {/* Secondary Action */}
-            <div className="text-center">
+            {/* Secondary Actions */}
+            <div className="space-y-4 text-center">
               <a
                 href="#institutes"
                 className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium transition-colors"
@@ -294,6 +307,20 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                 <FiEye className="w-4 h-4" />
                 View Verified Institutes
               </a>
+
+              {/* Register Institute Button */}
+              <div className="pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600 mb-3">
+                  Are you an educational institution?
+                </p>
+                <button
+                  onClick={() => onShowRegister && onShowRegister()}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-primary-600 text-primary-600 font-medium rounded-lg hover:bg-primary-50 transition-colors"
+                >
+                  <FiAward className="w-4 h-4" />
+                  Register Your Institute
+                </button>
+              </div>
             </div>
           </div>
         </main>
@@ -445,10 +472,10 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <span className={`font-semibold ${verificationResult.checks.database.success ? 'text-success-600' : 'text-danger-600'}`}>
-                        {verificationResult.checks.database.status}
+                      <span className={`font-semibold ${verificationResult.checks?.database?.success ? 'text-success-600' : 'text-danger-600'}`}>
+                        {verificationResult.checks?.database?.status || 'Unknown'}
                       </span>
-                      <div className="text-2xl">{verificationResult.checks.database.icon}</div>
+                      <div className="text-2xl">{verificationResult.checks?.database?.icon || <FiXCircle className="text-red-500" />}</div>
                     </div>
                   </div>
 
@@ -464,10 +491,10 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <span className={`font-semibold ${verificationResult.checks.blockchain.success ? 'text-success-600' : 'text-danger-600'}`}>
-                        {verificationResult.checks.blockchain.status}
+                      <span className={`font-semibold ${verificationResult.checks?.blockchain?.success ? 'text-success-600' : 'text-danger-600'}`}>
+                        {verificationResult.checks?.blockchain?.status || 'Unknown'}
                       </span>
-                      <div className="text-2xl">{verificationResult.checks.blockchain.icon}</div>
+                      <div className="text-2xl">{verificationResult.checks?.blockchain?.icon || <FiXCircle className="text-red-500" />}</div>
                     </div>
                   </div>
 
@@ -485,17 +512,17 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-bold text-gray-800">
-                          Score: {verificationResult.checks.aiScore.toFixed(2)}
+                          Score: {(verificationResult.checks?.aiScore || 0).toFixed(2)}
                         </div>
-                        <div className={`text-sm font-semibold ${getAiScoreColor(verificationResult.checks.aiScore).replace('bg-', 'text-').replace('500', '600')}`}>
-                          {getAiScoreText(verificationResult.checks.aiScore)}
+                        <div className={`text-sm font-semibold ${getAiScoreColor(verificationResult.checks?.aiScore || 0).replace('bg-', 'text-').replace('500', '600')}`}>
+                          {getAiScoreText(verificationResult.checks?.aiScore || 0)}
                         </div>
                       </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">
                       <div
-                        className={`h-3 rounded-full transition-all duration-500 ${getAiScoreColor(verificationResult.checks.aiScore)}`}
-                        style={{ width: `${verificationResult.checks.aiScore * 100}%` }}
+                        className={`h-3 rounded-full transition-all duration-500 ${getAiScoreColor(verificationResult.checks?.aiScore || 0)}`}
+                        style={{ width: `${(verificationResult.checks?.aiScore || 0) * 100}%` }}
                       ></div>
                     </div>
                   </div>
