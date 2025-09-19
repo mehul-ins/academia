@@ -36,7 +36,7 @@ academia/
 
 3. **Access the application**
    - Frontend: http://localhost
-   - Backend API: http://localhost:3001
+   - Backend API: http://localhost:5002
    - AI Service: http://localhost:5000
    - Blockchain RPC: http://localhost:8545
    - PostgreSQL: localhost:5432
@@ -56,7 +56,7 @@ academia/
 
 2. **Access services with hot reload**
    - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
+   - Backend API: http://localhost:5002
    - AI Service: http://localhost:5000
    - Blockchain: http://localhost:8545
 
@@ -146,7 +146,7 @@ cd frontend
 npm install
 
 # Set environment variables
-export VITE_API_URL="http://localhost:3001"
+export VITE_API_URL="http://localhost:5002"
 export VITE_AI_API_URL="http://localhost:5000"
 
 # Start development server
@@ -230,7 +230,7 @@ API_KEY=your-api-key
 
 ### Frontend Service
 ```env
-VITE_API_URL=http://localhost:3001
+VITE_API_URL=http://localhost:5002
 VITE_AI_API_URL=http://localhost:5000
 VITE_BLOCKCHAIN_RPC_URL=http://localhost:8545
 ```
@@ -243,7 +243,7 @@ VITE_BLOCKCHAIN_RPC_URL=http://localhost:8545
 - **Features**: Hot reload, optimized builds, nginx reverse proxy
 
 ### Backend (Node.js + Express)
-- **Port**: 3001
+- **Port**: 5002
 - **Technology**: Express, PostgreSQL, Redis
 - **Features**: API endpoints, database integration, blockchain interaction
 
@@ -310,7 +310,7 @@ VITE_BLOCKCHAIN_RPC_URL=http://localhost:8545
 
 ```bash
 # Check service health
-curl http://localhost:3001/health
+curl http://localhost:5002/health
 curl http://localhost:5000/health
 
 # Check blockchain connection

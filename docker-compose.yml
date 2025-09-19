@@ -56,7 +56,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - BLOCKCHAIN_RPC_URL=http://blockchain:8545
     ports:
-      - "3001:3001"
+      - "5002:5002"
     depends_on:
       - database
       - redis

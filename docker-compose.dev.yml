@@ -55,7 +55,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - BLOCKCHAIN_RPC_URL=http://blockchain:8545
     ports:
-      - "3001:3001"
+      - "5002:5002"
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -93,7 +93,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: academia_frontend_dev
     environment:
-      - VITE_API_URL=http://localhost:3001
+      - VITE_API_URL=http://localhost:5002
       - VITE_AI_API_URL=http://localhost:5002
     ports:
       - "3000:3000"

@@ -11,10 +11,10 @@ module.exports = (sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: true,
         },
-        certId: DataTypes.STRING,
+        certificateId: DataTypes.STRING,
         ocrData: DataTypes.JSON,
         result: DataTypes.STRING,
-        reasons: DataTypes.ARRAY(DataTypes.STRING), // PostgreSQL supports arrays
+        reasons: DataTypes.TEXT, // Store as JSON text for SQLite compatibility
         createdAt: {
             type: DataTypes.DATE,
             defaultValue: DataTypes.NOW,

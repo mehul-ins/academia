@@ -133,6 +133,12 @@ files/
 # Test files and coverage
 test-results/
 coverage/
+test_*.js
+debug_*.js
+*test.js
+create_admin.js
+check_database.js
+reset_database.js
 
 # Docker
 .dockerignore

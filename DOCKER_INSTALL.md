@@ -179,7 +179,7 @@ docker-compose down
    ```bash
    # Check what's using ports
    lsof -i :80
-   lsof -i :3001
+   lsof -i :5002
    lsof -i :5000
    lsof -i :8545
    
@@ -233,6 +233,6 @@ If you encounter issues:
 
 1. Check Docker Desktop logs
 2. Run `docker-compose logs` to see service logs
-3. Ensure all ports (80, 3001, 5000, 8545, 5432, 6379) are available
+3. Ensure all ports (80, 5002, 5000, 8545, 5432, 6379) are available
 4. Try restarting Docker Desktop
 5. Check the main README.md troubleshooting section

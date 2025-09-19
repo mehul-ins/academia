@@ -13,11 +13,11 @@ const Log = LogModel(sequelize);
 const Blacklist = BlacklistModel(sequelize);
 
 // Define associations
-User.hasMany(Log, { foreignKey: 'userId' });
-Log.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(Log, { foreignKey: 'userId', as: 'logs' });
+Log.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-Certificate.hasMany(Log, { foreignKey: 'certId', sourceKey: 'certId' });
-Log.belongsTo(Certificate, { foreignKey: 'certId', targetKey: 'certId' });
+Certificate.hasMany(Log, { foreignKey: 'certificateId', sourceKey: 'certificateId', as: 'logs' });
+Log.belongsTo(Certificate, { foreignKey: 'certificateId', targetKey: 'certificateId', as: 'certificate' });
 
 // Export models and sequelize instance
 module.exports = {

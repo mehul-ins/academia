@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { 
-  FiUploadCloud, FiFileText, FiCheckCircle, FiXCircle, FiAlertTriangle, 
-  FiDatabase, FiBox, FiCpu, FiInfo, FiRefreshCw
+import {
+  FiUploadCloud, FiFileText, FiCheckCircle, FiXCircle, FiAlertTriangle,
+  FiDatabase, FiBox, FiCpu, FiInfo, FiRefreshCw, FiShield
 } from 'react-icons/fi';
+import { verificationAPI } from '../lib/api';
 
 const VerificationPage = () => {
   const [verificationState, setVerificationState] = useState('initial'); // 'initial', 'loading', 'result'
@@ -116,22 +117,99 @@ const VerificationPage = () => {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (!uploadedFile && !certificateId.trim()) {
       alert('Please upload a file or enter a certificate ID');
       return;
     }
 
     setVerificationState('loading');
-    
-    // Simulate verification process
-    setTimeout(() => {
-      // Randomly select one of the mock results for demonstration
-      const results = Object.values(mockResults);
-      const randomResult = results[Math.floor(Math.random() * results.length)];
-      setVerificationResult(randomResult);
+
+    try {
+      let response;
+      if (certificateId.trim()) {
+        // Verify by certificate ID
+        response = await verificationAPI.verifyCertificate(certificateId.trim());
+      } else {
+        // Verify by file upload
+        response = await verificationAPI.verifyCertificate(uploadedFile);
+      }
+
+      // Transform backend response to frontend format
+      const transformedResult = transformBackendResponse(response);
+      setVerificationResult(transformedResult);
       setVerificationState('result');
-    }, 3000);
+    } catch (error) {
+      console.error('Verification failed:', error);
+      // Show error result
+      setVerificationResult({
+        verdict: 'ERROR',
+        icon: <FiAlertTriangle className="w-16 h-16 mx-auto" />,
+        bgColor: 'bg-yellow-100',
+        textColor: 'text-yellow-800',
+        borderColor: 'border-yellow-500',
+        details: {
+          error: error.message || 'Verification failed'
+        },
+        reasons: ['API connection failed', 'Please try again later']
+      });
+      setVerificationState('result');
+    }
+  };
+
+  // Transform backend response to frontend format
+  const transformBackendResponse = (response) => {
+    const { status, data } = response;
+
+    if (status === 'success' && data.result === 'VALID') {
+      return {
+        verdict: 'VALID',
+        icon: <FiCheckCircle className="w-16 h-16 mx-auto" />,
+        bgColor: 'bg-green-100',
+        textColor: 'text-green-800',
+        borderColor: 'border-green-500',
+        details: data.details || {},
+        ocrConfidence: data.ocrConfidence || 0,
+        checks: {
+          database: {
+            status: data.databaseMatch ? 'Matched' : 'Not Found',
+            icon: data.databaseMatch ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
+            success: data.databaseMatch
+          },
+          blockchain: {
+            status: data.blockchainValid ? 'Valid' : 'Invalid',
+            icon: data.blockchainValid ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
+            success: data.blockchainValid
+          },
+          aiScore: data.aiScore || 0
+        },
+        reasons: data.reasons || []
+      };
+    } else {
+      return {
+        verdict: 'FORGED',
+        icon: <FiXCircle className="w-16 h-16 mx-auto" />,
+        bgColor: 'bg-red-100',
+        textColor: 'text-red-800',
+        borderColor: 'border-red-500',
+        details: data.details || {},
+        ocrConfidence: data.ocrConfidence || 0,
+        checks: {
+          database: {
+            status: data.databaseMatch ? 'Matched' : 'Not Found',
+            icon: data.databaseMatch ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
+            success: data.databaseMatch
+          },
+          blockchain: {
+            status: data.blockchainValid ? 'Valid' : 'Invalid',
+            icon: data.blockchainValid ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
+            success: data.blockchainValid
+          },
+          aiScore: data.aiScore || 0
+        },
+        reasons: data.reasons || ['Certificate could not be verified']
+      };
+    }
   };
 
   const resetVerification = () => {
