@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: academia_database
+    environment:
+      POSTGRES_DB: academia
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - academia_network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: academia_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - academia_network
+    restart: unless-stopped
+
+  # Blockchain Service
+  blockchain:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    container_name: academia_blockchain
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "8545:8545"
+    networks:
+      - academia_network
+    restart: unless-stopped
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: academia_backend
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@database:5432/academia
+      - REDIS_URL=redis://redis:6379
+      - BLOCKCHAIN_RPC_URL=http://blockchain:8545
+    ports:
+      - "3001:3001"
+    depends_on:
+      - database
+      - redis
+      - blockchain
+    networks:
+      - academia_network
+    restart: unless-stopped
+
+  # AI Service
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: academia_ai
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@database:5432/academia
+    ports:
+      - "5000:5000"
+    depends_on:
+      - database
+    networks:
+      - academia_network
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: academia_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - ai-service
+    networks:
+      - academia_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  academia_network:
+    driver: bridge

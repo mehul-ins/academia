@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: academia_database_dev
+    environment:
+      POSTGRES_DB: academia_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - academia_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: academia_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - academia_network
+
+  # Blockchain Service (Development Mode)
+  blockchain:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    container_name: academia_blockchain_dev
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "8545:8545"
+    volumes:
+      - ./blockchain:/app
+      - /app/node_modules
+    networks:
+      - academia_network
+
+  # Backend Service (Development Mode)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: academia_backend_dev
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@database:5432/academia_dev
+      - REDIS_URL=redis://redis:6379
+      - BLOCKCHAIN_RPC_URL=http://blockchain:8545
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - database
+      - redis
+      - blockchain
+    networks:
+      - academia_network
+    command: npm run dev
+
+  # AI Service (Development Mode)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: academia_ai_dev
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@database:5432/academia_dev
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./ai-service:/app
+    depends_on:
+      - database
+    networks:
+      - academia_network
+    command: python app.py
+
+  # Frontend Service (Development Mode)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: academia_frontend_dev
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_AI_API_URL=http://localhost:5000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+      - ai-service
+    networks:
+      - academia_network
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+
+networks:
+  academia_network:
+    driver: bridge
