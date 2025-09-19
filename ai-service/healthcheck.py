@@ -2,7 +2,7 @@ import requests
 import sys
 
 try:
-    response = requests.get('http://localhost:5000/health', timeout=2)
+    response = requests.get('http://localhost:5002/health', timeout=2)
     if response.status_code == 200:
         sys.exit(0)
     else:
