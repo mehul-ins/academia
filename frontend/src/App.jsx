@@ -80,7 +80,7 @@ const AppContent = () => {
                 <FiShield className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-display font-bold text-gray-900">CertiVerify</h1>
+                <h1 className="text-2xl font-display font-bold text-gray-900">Academia</h1>
                 <p className="text-xs text-gray-500 font-medium">Trusted Certificate Verification</p>
               </div>
             </div>
