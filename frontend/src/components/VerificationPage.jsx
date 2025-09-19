@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   FiUploadCloud, FiFileText, FiCheckCircle, FiXCircle, FiAlertTriangle,
-  FiDatabase, FiBox, FiCpu, FiInfo, FiRefreshCw, FiShield, FiBarChart2, 
+  FiDatabase, FiBox, FiCpu, FiInfo, FiRefreshCw, FiShield, FiBarChart2,
   FiSearch, FiEye, FiAward
 } from 'react-icons/fi';
 import { verificationAPI } from '../lib/api';
@@ -36,6 +36,73 @@ const VerificationPage = ({ onVerificationSuccess }) => {
   };
 
   const handleVerify = async () => {
+    // Dummy handler for forged certificate
+    const handleVerifyForged = async () => {
+      setVerificationState('loading');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const mockResponse = {
+        status: 'success',
+        data: {
+          result: 'FORGED',
+          details: {
+            certId: certificateId.trim() || 'CERT-2024-002',
+            name: 'Jane Smith',
+            roll: 'CS21B1002',
+            course: 'Electrical Engineering',
+            institution: 'Fake University',
+            dateIssued: '2024-02-20',
+            marks: '95%'
+          },
+          ocrConfidence: 78,
+          databaseMatch: false,
+          blockchainValid: false,
+          aiScore: 0.87,
+          reasons: [
+            'AI detected high copy-move score (0.87)',
+            'Certificate hash not found on blockchain',
+            'Inconsistencies found in database records',
+            'Suspicious alterations detected in document structure'
+          ]
+        }
+      };
+      const transformedResult = transformBackendResponse(mockResponse);
+      setVerificationResult(transformedResult);
+      setVerificationState('result');
+    };
+
+    // Dummy handler for suspicious certificate
+    const handleVerifySuspicious = async () => {
+      setVerificationState('loading');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const mockResponse = {
+        status: 'success',
+        data: {
+          result: 'SUSPICIOUS',
+          details: {
+            certId: certificateId.trim() || 'CERT-2024-003',
+            name: 'Alex Johnson',
+            roll: 'CS21B1003',
+            course: 'Mechanical Engineering',
+            institution: 'Unknown College',
+            dateIssued: '2024-03-10',
+            marks: '78%'
+          },
+          ocrConfidence: 65,
+          databaseMatch: false,
+          blockchainValid: false,
+          aiScore: 0.45,
+          reasons: [
+            'Certificate not found in database',
+            'No blockchain registration found',
+            'Moderate AI tamper score (0.45)',
+            'Low OCR confidence (65%) suggests poor quality or alterations'
+          ]
+        }
+      };
+      const transformedResult = transformBackendResponse(mockResponse);
+      setVerificationResult(transformedResult);
+      setVerificationState('result');
+    };
     if (!uploadedFile && !certificateId.trim()) {
       alert('Please upload a file or enter a certificate ID');
       return;
@@ -43,7 +110,39 @@ const VerificationPage = ({ onVerificationSuccess }) => {
 
     setVerificationState('loading');
 
+    // Simulate loading time
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     try {
+      // DUMMY DATA FOR TESTING - Replace with actual API call later
+      const mockResponse = {
+        status: 'success',
+        data: {
+          result: 'VALID',
+          details: {
+            certId: certificateId.trim() || 'CERT-2024-001',
+            name: 'John Doe',
+            roll: 'CS21B1001',
+            course: 'Computer Science',
+            institution: 'Sample University',
+            dateIssued: '2024-01-15',
+            marks: '85%'
+          },
+          ocrConfidence: 92,
+          databaseMatch: true,
+          blockchainValid: true,
+          aiScore: 0.15,
+          reasons: [
+            'Certificate found in official database',
+            'Blockchain hash verification successful',
+            'AI tamper detection score below threshold',
+            'OCR extraction confidence high (92%)'
+          ]
+        }
+      };
+
+      // Use real API call (commented out for testing)
+      /*
       let response;
       if (certificateId.trim()) {
         // Verify by certificate ID
@@ -52,9 +151,10 @@ const VerificationPage = ({ onVerificationSuccess }) => {
         // Verify by file upload
         response = await verificationAPI.verifyCertificate(uploadedFile);
       }
+      */
 
       // Transform backend response to frontend format
-      const transformedResult = transformBackendResponse(response);
+      const transformedResult = transformBackendResponse(mockResponse);
       setVerificationResult(transformedResult);
       setVerificationState('result');
 
@@ -173,10 +273,10 @@ const VerificationPage = ({ onVerificationSuccess }) => {
               Verify Certificate Authenticity
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8 text-balance">
-              Instantly confirm the validity of any certificate using our advanced combination of 
+              Instantly confirm the validity of any certificate using our advanced combination of
               AI analysis, database verification, and blockchain technology.
             </p>
-            
+
             {/* Trust Indicators */}
             <div className="flex items-center justify-center gap-8 mb-12">
               <div className="flex items-center gap-2 text-gray-700">
@@ -288,6 +388,40 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                 <FiShield className="w-5 h-5" />
                 Verify Certificate
               </button>
+
+              {/* Demo Buttons for Testing */}
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 font-medium mb-3">🧪 Demo Mode - Test Different Results:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => {
+                      setCertificateId('DEMO-VALID');
+                      handleVerify();
+                    }}
+                    className="px-3 py-2 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+                  >
+                    Test Valid
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCertificateId('DEMO-FORGED');
+                      handleVerifyForged();
+                    }}
+                    className="px-3 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                  >
+                    Test Forged
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCertificateId('DEMO-SUSPICIOUS');
+                      handleVerifySuspicious();
+                    }}
+                    className="px-3 py-2 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
+                  >
+                    Test Suspicious
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Secondary Action */}
@@ -343,11 +477,10 @@ const VerificationPage = ({ onVerificationSuccess }) => {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="space-y-8 fade-in">
               {/* Verdict Card */}
-              <div className={`card-elevated-lg p-8 text-center border-l-8 ${
-                verificationResult.verdict === 'VALID' ? 'status-valid border-success-500' :
-                verificationResult.verdict === 'FORGED' ? 'status-forged border-danger-500' :
-                'status-suspicious border-warning-500'
-              }`}>
+              <div className={`card-elevated-lg p-8 text-center border-l-8 ${verificationResult.verdict === 'VALID' ? 'status-valid border-success-500' :
+                  verificationResult.verdict === 'FORGED' ? 'status-forged border-danger-500' :
+                    'status-suspicious border-warning-500'
+                }`}>
                 <div className="mb-6">
                   {verificationResult.verdict === 'VALID' ? (
                     <FiCheckCircle className="w-20 h-20 mx-auto text-success-600" />
@@ -361,8 +494,8 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                   Certificate is{' '}
                   <span className={
                     verificationResult.verdict === 'VALID' ? 'text-success-700' :
-                    verificationResult.verdict === 'FORGED' ? 'text-danger-700' :
-                    'text-warning-700'
+                      verificationResult.verdict === 'FORGED' ? 'text-danger-700' :
+                        'text-warning-700'
                   }>
                     {verificationResult.verdict}
                   </span>
@@ -370,7 +503,7 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                 <p className="text-lg text-gray-600 mb-6">
                   Verification completed using multi-layer security analysis
                 </p>
-                
+
                 {/* Trust Score - if valid */}
                 {verificationResult.verdict === 'VALID' && (
                   <div className="inline-flex items-center gap-3 bg-success-100 text-success-800 px-6 py-3 rounded-xl font-semibold text-lg">
@@ -416,7 +549,7 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* OCR Confidence */}
                 <div className="mt-8 pt-6 border-t border-gray-200">
                   <div className="flex items-center justify-between mb-3">
@@ -517,11 +650,10 @@ const VerificationPage = ({ onVerificationSuccess }) => {
                 <div className="space-y-4">
                   {verificationResult.reasons && verificationResult.reasons.map((reason, index) => (
                     <div key={index} className="flex items-start">
-                      <div className={`w-3 h-3 rounded-full mt-2 mr-4 flex-shrink-0 ${
-                        verificationResult.verdict === 'VALID' ? 'bg-success-500' :
-                        verificationResult.verdict === 'FORGED' ? 'bg-danger-500' :
-                        'bg-warning-500'
-                      }`}></div>
+                      <div className={`w-3 h-3 rounded-full mt-2 mr-4 flex-shrink-0 ${verificationResult.verdict === 'VALID' ? 'bg-success-500' :
+                          verificationResult.verdict === 'FORGED' ? 'bg-danger-500' :
+                            'bg-warning-500'
+                        }`}></div>
                       <p className="text-gray-700 leading-relaxed">{reason}</p>
                     </div>
                   ))}
