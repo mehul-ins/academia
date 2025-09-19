@@ -27,11 +27,15 @@ app.get('/api/health', (req, res) => {
 const verifyRoutes = require('./routes/verify');
 const certificateRoutes = require('./routes/certificates');
 const adminRoutes = require('./routes/admin');
+const templateRoutes = require('./routes/template');
+const authRoutes = require('./routes/auth');
 
 // Mount routes
 app.use('/api/verify', verifyRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/certificates', templateRoutes);
+app.use('/api/auth', authRoutes);
 
 // ...existing code...
 

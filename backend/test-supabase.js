@@ -1,5 +1,4 @@
 const supabase = require('./utils/supabaseClient');
-
 async function testSupabaseConnection() {
     console.log('🧪 Testing Supabase connection...\n');
 

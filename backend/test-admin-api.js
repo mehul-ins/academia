@@ -5,7 +5,6 @@ const testAdminAPI = async () => {
         const healthResponse = await fetch('http://localhost:5002/api/health');
         const healthData = await healthResponse.json();
         console.log('Health check:', healthData);
-
         // Test login with admin credentials
         const loginResponse = await fetch('http://localhost:5002/api/auth/login', {
             method: 'POST',

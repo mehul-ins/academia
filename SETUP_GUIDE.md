@@ -1,5 +1,4 @@
 # Academia Certificate Verification System - Setup Guide
-
 ## Prerequisites
 - Node.js (v16 or higher)
 - PostgreSQL (v12 or higher)

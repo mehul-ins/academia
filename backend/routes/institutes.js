@@ -1,17 +1,17 @@
 const express = require('express');
-const { User } = require('../models');
+const supabase = require('../utils/supabaseClient');
 
 const router = express.Router();
 
-// GET /api/institutes - Get all registered institutes
+// GET /api/institutes - Get all registered institutes (Supabase)
 router.get('/', async (req, res) => {
     try {
-        const institutes = await User.findAll({
-            where: { role: 'institution' },
-            attributes: ['id', 'email', 'createdAt'],
-            order: [['createdAt', 'DESC']]
-        });
-
+        const { data: institutes, error } = await supabase
+            .from('users')
+            .select('id, email, instituteName, createdAt')
+            .eq('role', 'institution')
+            .order('createdAt', { ascending: false });
+        if (error) throw error;
         res.json({
             status: 'success',
             data: institutes

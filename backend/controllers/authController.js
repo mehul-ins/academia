@@ -1,4 +1,4 @@
-const { User } = require('../models');
+const supabase = require('../utils/supabaseClient');
 const jwt = require('jsonwebtoken');
 
 const authController = {
@@ -18,8 +18,26 @@ const authController = {
                 university,
             } = req.body;
 
+            // Log all required fields for matching
+            console.log('Registration match check fields:', {
+                email,
+                instituteName,
+                registrationNumber,
+                establishedYear,
+                address,
+                contactPhone,
+                website,
+                accreditation,
+                university
+            });
+
             // Check if user already exists
-            const existingUser = await User.findOne({ where: { email } });
+            const { data: existingUser, error: findError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('email', email)
+                .maybeSingle();
+            if (findError) throw findError;
             if (existingUser) {
                 return res.status(400).json({
                     status: 'error',
@@ -27,31 +45,28 @@ const authController = {
                 });
             }
 
-            // Create user
-            const userData = {
-                email,
-                password,
-                role,
-            };
-
-            // Add institute-specific fields if registering as institution
-            if (role === 'institution') {
-                Object.assign(userData, {
-                    instituteName,
-                    registrationNumber,
-                    establishedYear,
-                    address,
-                    contactPhone,
-                    website,
-                    accreditation,
-                    university,
-                    verificationStatus: 'pending',
-                });
-            } else if (role === 'admin') {
-                userData.verificationStatus = 'verified';
-            }
-
-            const user = await User.create(userData);
+            // Create user (password should be hashed in production)
+            const { data: user, error: insertError } = await supabase
+                .from('users')
+                .insert([
+                    {
+                        email,
+                        password, // TODO: hash password in production
+                        role,
+                        instituteName,
+                        registrationNumber,
+                        establishedYear,
+                        address,
+                        contactPhone,
+                        website,
+                        accreditation,
+                        university,
+                        verificationStatus: role === 'institution' ? 'pending' : 'verified',
+                    },
+                ])
+                .select()
+                .single();
+            if (insertError) throw insertError;
 
             // Generate JWT token
             const token = jwt.sign(

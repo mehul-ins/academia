@@ -21,145 +21,137 @@ exports.verifyCertificate = async (req, res) => {
     };
 
     try {
-        // Check if file was uploaded
-        if (!req.file) {
-            logData.status = 'FAILED';
-            logData.details = { error: 'No file uploaded' };
-            console.log('Logging verification attempt:', logData);
-
-            return res.status(400).json({
-                status: 'Invalid',
-                reasons: ['No file uploaded'],
-                certificate: null
-            });
-        }
-
-        // Log the file details
-        logData.details = {
-            fileName: req.file.originalname,
-            fileSize: req.file.size,
-            mimeType: req.file.mimetype
-        };
-
-        // Step 1: Send file to AI service for analysis
-        console.log('Sending file to AI service for analysis...');
-
-        const FormData = require('form-data');
-        const formData = new FormData();
-        formData.append('file', req.file.buffer, {
-            filename: req.file.originalname,
-            contentType: req.file.mimetype
-        });
-
-        let aiAnalysisResult;
-        try {
-            const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/analyze`, formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                },
-                timeout: 30000 // 30 second timeout
-            });
-            aiAnalysisResult = aiResponse.data;
-            console.log('AI Analysis Result:', aiAnalysisResult);
-        } catch (aiError) {
-            // MOCK AI SERVICE RESPONSE FOR LOCAL TESTING
-            console.warn('AI Service unavailable, using mock AI analysis result.');
-            aiAnalysisResult = {
-                certId: 'MOCK-CERT-001',
-                name: 'Mock Student',
-                roll: 'MOCK123',
-                course: 'Mock Course'
+        let certId, name, roll, course;
+        // 1. If file is uploaded, use AI service to extract data
+        if (req.file) {
+            logData.details = {
+                fileName: req.file.originalname,
+                fileSize: req.file.size,
+                mimeType: req.file.mimetype
             };
-        }
-
-        // Step 2: Extract certificate data from AI analysis
-        const { certId, name, roll, course } = aiAnalysisResult;
-
-        if (!certId) {
+            // Step 1: Send file to AI service for analysis
+            console.log('Sending file to AI service for analysis...');
+            const FormData = require('form-data');
+            const formData = new FormData();
+            formData.append('file', req.file.buffer, {
+                filename: req.file.originalname,
+                contentType: req.file.mimetype
+            });
+            let aiAnalysisResult;
+            try {
+                const aiResponse = await axios.post(`${AI_SERVICE_URL}/api/analyze`, formData, {
+                    headers: {
+                        ...formData.getHeaders(),
+                    },
+                    timeout: 30000 // 30 second timeout
+                });
+                aiAnalysisResult = aiResponse.data;
+                console.log('AI Analysis Result:', aiAnalysisResult);
+            } catch (aiError) {
+                // MOCK AI SERVICE RESPONSE FOR LOCAL TESTING
+                console.warn('AI Service unavailable, using mock AI analysis result.');
+                aiAnalysisResult = {
+                    certId: 'MOCK-CERT-001',
+                    name: 'Mock Student',
+                    roll: 'MOCK123',
+                    course: 'Mock Course'
+                };
+            }
+            certId = aiAnalysisResult.certId;
+            name = aiAnalysisResult.name;
+            roll = aiAnalysisResult.roll;
+            course = aiAnalysisResult.course;
+            if (!certId) {
+                logData.status = 'FAILED';
+                logData.details.error = 'Certificate ID not found in document';
+                console.log('Logging verification attempt:', logData);
+                return res.status(400).json({
+                    status: 'Invalid',
+                    reasons: ['Certificate ID not found in document'],
+                    certificate: null
+                });
+            }
+            logData.details.extractedData = { certId, name, roll, course };
+        } else if (req.body && req.body.certificateId) {
+            // 2. If certificateId is provided in body, use it directly
+            certId = req.body.certificateId;
+            logData.details = { certIdFromRequest: certId };
+        } else {
             logData.status = 'FAILED';
-            logData.details.error = 'Certificate ID not found in document';
+            logData.details = { error: 'No file uploaded or certificateId provided' };
             console.log('Logging verification attempt:', logData);
-
             return res.status(400).json({
                 status: 'Invalid',
-                reasons: ['Certificate ID not found in document'],
+                reasons: ['No file uploaded or certificateId provided'],
                 certificate: null
             });
         }
 
-        logData.details.extractedData = { certId, name, roll, course };
+        // 3. Query Supabase for certificate
+        let dbCertificate = null;
+        try {
+            const { data, error } = await supabase
+                .from('certificates')
+                .select('*')
+                .eq('certificateId', certId)
+                .single();
+            if (error || !data) {
+                logData.status = 'FAILED';
+                logData.details.supabaseError = error ? error.message : 'Certificate not found';
+                return res.status(404).json({
+                    status: 'Invalid',
+                    reasons: ['Certificate not found in database'],
+                    certificate: null
+                });
+            }
+            dbCertificate = data;
+        } catch (dbError) {
+            logData.status = 'ERROR';
+            logData.details.supabaseError = dbError.message;
+            return res.status(500).json({
+                status: 'Invalid',
+                reasons: ['Database error during verification'],
+                certificate: null
+            });
+        }
 
-        // Step 3: Check database for certificate
-        console.log('Checking database for certificate:', certId);
-
-        // MOCK DATABASE CHECK - Replace with actual Supabase query
-        // For now, we'll simulate a valid certificate for testing
-        const dbCertificate = {
-            certificateId: certId,
-            studentName: name || 'Mock Student',
-            rollNumber: roll || 'MOCK123',
-            course: course || 'Mock Course',
-            institution: 'Mock Institution',
-            issueDate: new Date(),
-            grade: 'A',
-            blacklisted: false,
-            status: 'active'
-        };
-
-        logData.details.validationResult = 'Certificate found in database';
-
-        // Step 4: Validate extracted data against database
+        // 4. Validate extracted data (if available) against database
         const mismatches = [];
-
-        if (name && dbCertificate.studentName.toLowerCase() !== name.toLowerCase()) {
+        if (name && dbCertificate.studentName && dbCertificate.studentName.toLowerCase() !== name.toLowerCase()) {
             mismatches.push(`Name mismatch: expected "${dbCertificate.studentName}", found "${name}"`);
         }
-
-        if (roll && dbCertificate.rollNumber !== roll) {
+        if (roll && dbCertificate.rollNumber && dbCertificate.rollNumber !== roll) {
             mismatches.push(`Roll number mismatch: expected "${dbCertificate.rollNumber}", found "${roll}"`);
         }
-
-        if (course && dbCertificate.course.toLowerCase() !== course.toLowerCase()) {
+        if (course && dbCertificate.course && dbCertificate.course.toLowerCase() !== course.toLowerCase()) {
             mismatches.push(`Course mismatch: expected "${dbCertificate.course}", found "${course}"`);
         }
-
         if (mismatches.length > 0) {
             logData.status = 'SUSPICIOUS';
             logData.details.validationResult = 'Field mismatches detected';
             logData.details.mismatches = mismatches;
             console.log('Logging verification attempt:', logData);
-
             return res.status(200).json({
                 status: 'Suspicious',
                 reasons: mismatches,
-                certificate: {
-                    id: dbCertificate.certificateId,
-                    studentName: dbCertificate.studentName,
-                    rollNumber: dbCertificate.rollNumber,
-                    course: dbCertificate.course,
-                    issueDate: dbCertificate.issueDate,
-                    grade: dbCertificate.grade
-                }
+                certificate: dbCertificate
             });
         }
 
-        // Step 5: Compute hash and verify with blockchain
+        // 5. Compute hash and verify with blockchain
         console.log('Verifying certificate hash with blockchain...');
-
         const certificateData = {
             certificateId: dbCertificate.certificateId,
             studentName: dbCertificate.studentName,
             rollNumber: dbCertificate.rollNumber,
             course: dbCertificate.course,
-            issueDate: dbCertificate.issueDate.toISOString(),
+            issueDate: dbCertificate.issueDate ? new Date(dbCertificate.issueDate).toISOString() : '',
             grade: dbCertificate.grade
         };
-
         const computedHash = crypto
             .createHash('sha256')
             .update(JSON.stringify(certificateData))
             .digest('hex');
-
         let blockchainVerified = true;
         let blockchainScore = null;
         try {
@@ -169,21 +161,18 @@ exports.verifyCertificate = async (req, res) => {
             }, {
                 timeout: 10000 // 10 second timeout
             });
-
             blockchainVerified = blockchainResponse.data.verified;
             blockchainScore = blockchainResponse.data.score || blockchainResponse.data.blockNumber || null;
             console.log('Blockchain verification result:', blockchainVerified, 'Score:', blockchainScore);
         } catch (blockchainError) {
             console.error('Blockchain Service Error:', blockchainError.message);
-            // If blockchain service is unavailable, we'll proceed but note the issue
             blockchainVerified = null;
             blockchainScore = null;
         }
 
-        // Step 6: Determine final status
+        // 6. Determine final status
         let finalStatus = 'Valid';
         let reasons = [];
-
         if (blockchainVerified === false) {
             finalStatus = 'Suspicious';
             reasons.push('Blockchain hash verification failed');
@@ -192,14 +181,14 @@ exports.verifyCertificate = async (req, res) => {
             reasons.push('Blockchain verification unavailable');
         }
 
-        // Step 7: Log the verification result
+        // 7. Log the verification result
         logData.status = finalStatus.toUpperCase();
         logData.details.validationResult = 'All validations passed';
         logData.details.blockchainVerified = blockchainVerified;
         logData.details.computedHash = computedHash;
         console.log('Logging verification attempt:', logData);
 
-        // Step 8: Return verification result
+        // 8. Return verification result
         return res.status(200).json({
             status: finalStatus,
             reasons: reasons.length > 0 ? reasons : undefined,
@@ -218,11 +207,9 @@ exports.verifyCertificate = async (req, res) => {
 
     } catch (error) {
         console.error('Verification Error:', error);
-
         logData.status = 'ERROR';
         logData.details.error = error.message;
         console.log('Logging verification attempt:', logData);
-
         return res.status(500).json({
             status: 'Invalid',
             reasons: ['Internal server error during verification'],

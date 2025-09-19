@@ -1,5 +1,4 @@
 const http = require('http');
-
 async function testBackend() {
     return new Promise((resolve) => {
         console.log('Testing backend health...');

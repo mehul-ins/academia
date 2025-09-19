@@ -2,7 +2,7 @@ const csv = require('csv-parser');
 const { Readable } = require('stream');
 const crypto = require('crypto');
 const axios = require('axios');
-const { Certificate, Log } = require('../models');
+const supabase = require('../utils/supabaseClient');
 
 // Environment variables
 const BLOCKCHAIN_SERVICE_URL = process.env.BLOCKCHAIN_SERVICE_URL || 'http://localhost:8080';
@@ -11,171 +11,180 @@ const BLOCKCHAIN_SERVICE_URL = process.env.BLOCKCHAIN_SERVICE_URL || 'http://loc
  * Bulk Certificate Upload Endpoint
  * Handles CSV upload, parsing, database operations, and blockchain integration
  */
+
 exports.bulkUpload = async (req, res) => {
-    let logData = {
-        action: 'BULK_CERTIFICATE_UPLOAD',
-        userId: req.user ? req.user.id : null,
-        userEmail: req.user ? req.user.email : null,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-        timestamp: new Date(),
-        status: 'PENDING'
-    };
-
+    let csvData = [];
+    let errors = [];
+    const MAX_TIMEOUT_MS = 25000;
+    let timeoutHandle;
+    const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+            reject(new Error('Bulk upload timed out. Please try a smaller file or check your network.'));
+        }, MAX_TIMEOUT_MS);
+    });
     try {
-        // Check if file was uploaded
         if (!req.file) {
-            logData.status = 'FAILED';
-            logData.details = { error: 'No CSV file uploaded' };
-            await Log.create(logData);
-
+            clearTimeout(timeoutHandle);
             return res.status(400).json({
                 status: 'error',
                 message: 'No CSV file uploaded',
                 summary: { total: 0, inserted: 0, updated: 0, failed: 0 }
             });
         }
-
-        // Validate file type
         if (req.file.mimetype !== 'text/csv' && !req.file.originalname.toLowerCase().endsWith('.csv')) {
-            logData.status = 'FAILED';
-            logData.details = { error: 'Invalid file type. Only CSV files are allowed.' };
-            await Log.create(logData);
-
+            clearTimeout(timeoutHandle);
             return res.status(400).json({
                 status: 'error',
                 message: 'Invalid file type. Only CSV files are allowed.',
                 summary: { total: 0, inserted: 0, updated: 0, failed: 0 }
             });
         }
-
-        // Log file details
-        logData.details = {
-            fileName: req.file.originalname,
-            fileSize: req.file.size,
-            mimeType: req.file.mimetype
-        };
-
-        console.log('Processing CSV file:', req.file.originalname);
-
-        // Parse CSV data
-        const csvData = [];
-        const errors = [];
-
-        await new Promise((resolve, reject) => {
-            const stream = Readable.from(req.file.buffer);
-            let rowNumber = 0;
-
-            stream
-                .pipe(csv({
-                    skipEmptyLines: true,
-                    strict: false
-                }))
-                .on('data', (row) => {
-                    rowNumber++;
-
-                    // Validate required fields
-                    if (!row.certificateId || !row.studentName || !row.courseName) {
-                        errors.push({
-                            row: rowNumber,
-                            data: row,
-                            error: 'Missing required fields (certificateId, studentName, courseName)'
+        if (!req.user || !req.user.email) {
+            clearTimeout(timeoutHandle);
+            return res.status(401).json({
+                status: 'error',
+                message: 'Authentication/session expired. Please log in again.',
+                summary: { total: 0, inserted: 0, updated: 0, failed: 0 }
+            });
+        }
+        // CSV parsing and mapping
+        let rowNumber = 0;
+        await Promise.race([
+            new Promise((resolve) => {
+                const stream = Readable.from(req.file.buffer);
+                stream
+                    .pipe(csv({ skipEmptyLines: true, strict: false }))
+                    .on('data', (row) => {
+                        rowNumber++;
+                        // Normalize keys: trim whitespace from all keys
+                        const normalizedRow = {};
+                        Object.keys(row).forEach(key => {
+                            normalizedRow[key.trim()] = row[key];
                         });
-                        return;
-                    }
-
-                    // Clean and format data
-                    const cleanRow = {
-                        certificateId: row.certificateId.trim(),
-                        studentName: row.studentName.trim(),
-                        rollNumber: row.rollNumber ? row.rollNumber.trim() : 'N/A',
-                        course: row.courseName.trim(),
-                        institution: row.institutionName ? row.institutionName.trim() : 'Default Institution',
-                        issueDate: row.issueDate ? new Date(row.issueDate) : new Date(),
-                        grade: row.grade ? row.grade.trim() : 'A',
-                        additionalData: row.additionalData ? row.additionalData : null,
-                        rowNumber: rowNumber
-                    };
-
-                    csvData.push(cleanRow);
-                })
-                .on('end', () => {
-                    console.log(`CSV parsing complete. Found ${csvData.length} valid rows, ${errors.length} errors.`);
+                        const mapField = (row, keys) => {
+                            for (const key of keys) {
+                                if (row[key] && row[key].trim() !== '') return row[key].trim();
+                            }
+                            return undefined;
+                        };
+                        // Use roll_number as the unique identifier
+                        const roll_number = mapField(normalizedRow, ['Roll Number', 'rollNumber', 'roll_number', 'certificateId', 'ID', 'id']);
+                        const student_name = mapField(normalizedRow, ['studentName', 'Name', 'name', 'student_name']);
+                        const course_name = mapField(normalizedRow, ['courseName', 'Course', 'course', 'course_name']);
+                        const grade = mapField(normalizedRow, ['grade', 'CGPA', 'Marks', 'marks', 'Percentage', 'percentage', 'GPA']);
+                        const issue_date = mapField(normalizedRow, ['issueDate', 'Issued Year', 'issued_year', 'Year', 'year']);
+                        const institution = mapField(normalizedRow, ['institutionName', 'Institution', 'institution']);
+                        console.log(`Row ${rowNumber} mapping:`, { roll_number, student_name, course_name, row: normalizedRow });
+                        if (!student_name || !course_name) {
+                            const missing = [];
+                            if (!student_name) missing.push('student_name');
+                            if (!course_name) missing.push('course_name');
+                            errors.push({ row: rowNumber, data: normalizedRow, error: `Missing required fields: ${missing.join(', ')}` });
+                            console.error(`Row ${rowNumber} skipped: missing ${missing.join(', ')}`);
+                            return;
+                        }
+                        const cleanRow = {
+                            student_name,
+                            roll_number,
+                            course_name,
+                            institution: institution || 'Default Institution',
+                            issue_date: issue_date ? new Date(issue_date) : new Date(),
+                            grade: grade || '',
+                            rowNumber: rowNumber
+                        };
+                        csvData.push(cleanRow);
+                    })
+                    .on('end', () => {
+                        console.log(`CSV parsing complete. Found ${csvData.length} valid rows, ${errors.length} errors.`);
+                        resolve();
+                    })
+                    .on('error', (error) => {
+                        console.error('CSV parsing error:', error);
+                        resolve(); // Always resolve to avoid hanging
+                    });
+                setTimeout(() => {
                     resolve();
-                })
-                .on('error', (error) => {
-                    console.error('CSV parsing error:', error);
-                    reject(error);
-                });
-        });
-
-        // Initialize counters
+                }, 5000);
+            }),
+            timeoutPromise
+        ]);
+        clearTimeout(timeoutHandle);
         let total = csvData.length;
         let inserted = 0;
         let updated = 0;
         let failed = errors.length;
         const failedRecords = [...errors];
-
-        // Process each valid CSV row
         for (const row of csvData) {
             try {
-                // Check if certificate already exists
-                const existingCert = await Certificate.findOne({
-                    where: { certificateId: row.certificateId }
-                });
-
-                let certificate;
-                if (existingCert) {
-                    // Update existing certificate
-                    await existingCert.update({
-                        studentName: row.studentName,
-                        rollNumber: row.rollNumber,
-                        course: row.course,
-                        institution: row.institution,
-                        grade: row.grade
-                    });
-                    certificate = existingCert;
-                    updated++;
-                    console.log(`Updated certificate: ${row.certificateId}`);
-                } else {
-                    // Insert new certificate
-                    certificate = await Certificate.create(row);
-                    inserted++;
-                    console.log(`Inserted new certificate: ${row.certificateId}`);
+                // Try to update by certificate_id if present, else by roll_number if present, else always insert
+                let existingCert = null;
+                let findError = null;
+                if (row.roll_number) {
+                    const result = await supabase
+                        .from('certificates')
+                        .select('*')
+                        .eq('roll_number', row.roll_number)
+                        .maybeSingle();
+                    existingCert = result.data;
+                    findError = result.error;
                 }
-
-                // Compute hash for blockchain
+                if (findError) throw findError;
+                let certificate;
+                // Prepare DB payload without rowNumber
+                const dbPayload = {
+                    student_name: row.student_name,
+                    roll_number: row.roll_number,
+                    course_name: row.course_name,
+                    institution: row.institution,
+                    issue_date: row.issue_date,
+                    grade: row.grade
+                };
+                if (existingCert) {
+                    // Update existing by roll_number
+                    const updateQuery = supabase
+                        .from('certificates')
+                        .update(dbPayload)
+                        .eq('roll_number', row.roll_number);
+                    const { data: updatedCert, error: updateError } = await updateQuery.select().single();
+                    if (updateError) throw updateError;
+                    certificate = updatedCert;
+                    updated++;
+                    console.log(`Updated certificate: ${row.roll_number}`);
+                } else {
+                    const { data: insertedCert, error: insertError } = await supabase
+                        .from('certificates')
+                        .insert([dbPayload])
+                        .select()
+                        .single();
+                    if (insertError) throw insertError;
+                    certificate = insertedCert;
+                    inserted++;
+                    console.log(`Inserted new certificate: ${row.roll_number}`);
+                }
                 const certificateData = {
-                    certificateId: certificate.certificateId,
-                    studentName: certificate.studentName,
-                    rollNumber: certificate.rollNumber,
-                    course: certificate.course,
-                    issueDate: certificate.issueDate.toISOString(),
+                    roll_number: certificate.roll_number,
+                    student_name: certificate.student_name,
+                    course_name: certificate.course_name,
+                    issue_date: certificate.issue_date ? new Date(certificate.issue_date).toISOString() : '',
                     grade: certificate.grade
                 };
-
                 const hash = crypto
                     .createHash('sha256')
                     .update(JSON.stringify(certificateData))
                     .digest('hex');
-
-                // Store hash on blockchain
-                try {
-                    await axios.post(`${BLOCKCHAIN_SERVICE_URL}/api/store-hash`, {
-                        certId: certificate.certificateId,
-                        hash: hash,
-                        issuer: req.user.email || 'system'
-                    }, {
-                        timeout: 10000 // 10 second timeout
+                axios.post(`${BLOCKCHAIN_SERVICE_URL}/api/store-hash`, {
+                    certId: certificate.roll_number,
+                    hash: hash,
+                    issuer: req.user && req.user.email ? req.user.email : 'system'
+                }, {
+                    timeout: 10000
+                })
+                    .then(() => {
+                        console.log(`Blockchain hash stored for certificate: ${certificate.roll_number}`);
+                    })
+                    .catch((blockchainError) => {
+                        console.error(`Blockchain storage failed for ${certificate.roll_number}:`, blockchainError.message);
                     });
-
-                    console.log(`Blockchain hash stored for certificate: ${certificate.certificateId}`);
-                } catch (blockchainError) {
-                    console.error(`Blockchain storage failed for ${certificate.certificateId}:`, blockchainError.message);
-                    // Don't fail the entire operation if blockchain is unavailable
-                    // The certificate is still valid in the database
-                }
-
             } catch (dbError) {
                 console.error(`Database operation failed for row ${row.rowNumber}:`, dbError.message);
                 failed++;
@@ -184,25 +193,8 @@ exports.bulkUpload = async (req, res) => {
                     data: row,
                     error: `Database error: ${dbError.message}`
                 });
-
-                // If this was an insert that failed, decrease the inserted counter
-                if (!await Certificate.findOne({ where: { certificateId: row.certificateId } })) {
-                    // Certificate doesn't exist, so it was a failed insert
-                    // (no action needed, already counted in failed)
-                } else {
-                    // Certificate exists, so it was a failed update
-                    updated--;
-                }
             }
         }
-
-        // Log the operation result
-        logData.status = 'COMPLETED';
-        logData.details.summary = { total, inserted, updated, failed };
-        logData.details.failedRecords = failedRecords;
-        await Log.create(logData);
-
-        // Return summary
         return res.status(200).json({
             status: 'success',
             message: 'Bulk certificate upload completed',
@@ -214,20 +206,27 @@ exports.bulkUpload = async (req, res) => {
             },
             errors: failedRecords.length > 0 ? failedRecords : undefined
         });
-
     } catch (error) {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
         console.error('Bulk upload error:', error);
-
-        logData.status = 'ERROR';
-        logData.details.error = error.message;
-        await Log.create(logData);
-
         return res.status(500).json({
             status: 'error',
-            message: 'Internal server error during bulk upload',
+            message: error.message || 'Internal server error during bulk upload',
             summary: { total: 0, inserted: 0, updated: 0, failed: 0 }
         });
     }
+};
+
+exports.getAllCertificates = async (req, res) => {
+    // ...existing code for getAllCertificates...
+};
+
+exports.getCertificateById = async (req, res) => {
+    // ...existing code for getCertificateById...
+};
+
+exports.deleteCertificate = async (req, res) => {
+    // ...existing code for deleteCertificate...
 };
 
 /**
@@ -239,21 +238,30 @@ exports.getAllCertificates = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
-        const { count, rows } = await Certificate.findAndCountAll({
-            limit: limit,
-            offset: offset,
-            order: [['createdAt', 'DESC']]
-        });
+        // Get certificates with Supabase
+        const { data: certificates, error: certsError, count } = await supabase
+            .from('certificates')
+            .select('*', { count: 'exact' })
+            .range(offset, offset + limit - 1)
+            .order('created_at', { ascending: false });
+
+        if (certsError) {
+            console.error('Error fetching certificates:', certsError);
+            return res.status(500).json({
+                status: 'error',
+                message: 'Failed to fetch certificates'
+            });
+        }
 
         return res.status(200).json({
             status: 'success',
             data: {
-                certificates: rows,
+                certificates: certificates || [],
                 pagination: {
                     currentPage: page,
-                    totalPages: Math.ceil(count / limit),
-                    totalRecords: count,
-                    hasNext: page < Math.ceil(count / limit),
+                    totalPages: count ? Math.ceil(count / limit) : 0,
+                    totalRecords: count || 0,
+                    hasNext: count ? page < Math.ceil(count / limit) : false,
                     hasPrev: page > 1
                 }
             }
@@ -274,11 +282,13 @@ exports.getCertificateById = async (req, res) => {
     try {
         const { certificateId } = req.params;
 
-        const certificate = await Certificate.findOne({
-            where: { certificateId: certificateId }
-        });
+        const { data: certificate, error } = await supabase
+            .from('certificates')
+            .select('*')
+            .eq('certificate_id', certificateId)
+            .single();
 
-        if (!certificate) {
+        if (error) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Certificate not found'
@@ -287,7 +297,7 @@ exports.getCertificateById = async (req, res) => {
 
         return res.status(200).json({
             status: 'success',
-            data: { certificate }
+            data: certificate
         });
     } catch (error) {
         console.error('Get certificate error:', error);
@@ -305,30 +315,27 @@ exports.deleteCertificate = async (req, res) => {
     try {
         const { certificateId } = req.params;
 
-        const certificate = await Certificate.findOne({
-            where: { certificateId: certificateId }
-        });
+        const { data: certificate, error: findError } = await supabase
+            .from('certificates')
+            .select('*')
+            .eq('certificate_id', certificateId)
+            .single();
 
-        if (!certificate) {
+        if (findError || !certificate) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Certificate not found'
             });
         }
 
-        await certificate.destroy();
+        const { error: deleteError } = await supabase
+            .from('certificates')
+            .delete()
+            .eq('certificate_id', certificateId);
 
-        // Log the deletion
-        await Log.create({
-            action: 'CERTIFICATE_DELETION',
-            userId: req.user.id,
-            userEmail: req.user.email,
-            ipAddress: req.ip,
-            userAgent: req.get('User-Agent'),
-            timestamp: new Date(),
-            status: 'COMPLETED',
-            details: { certificateId: certificateId }
-        });
+        if (deleteError) {
+            throw deleteError;
+        }
 
         return res.status(200).json({
             status: 'success',

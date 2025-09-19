@@ -1,5 +1,4 @@
 # Supabase Integration Guide
-
 ## 🚀 Setup Complete!
 
 Your Academia backend has been successfully integrated with Supabase Auth. Here's what was implemented:

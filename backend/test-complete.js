@@ -1,6 +1,5 @@
 const supabase = require('./utils/supabaseClient');
 const jwt = require('jsonwebtoken');
-
 async function runCompleteTest() {
     console.log('🧪 Running Complete Supabase Integration Test...\n');
 

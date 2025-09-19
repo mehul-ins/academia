@@ -16,6 +16,6 @@ router.get('/logs', adminController.getLogs);
 
 // Certificate management
 router.get('/certificates', adminController.getCertificates);
-router.put('/certificates/:certificateId/blacklist', adminController.toggleBlacklist);
+router.put('/certificates/:rollNumber/blacklist', adminController.toggleBlacklist);
 
 module.exports = router;

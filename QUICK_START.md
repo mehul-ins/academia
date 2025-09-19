@@ -1,6 +1,6 @@
-# 🔧 Quick Setup Reference
+# 🔧 Quick Setup Reference - READY TO USE
 
-This is a condensed version of the setup process for teammates who want to get started quickly.
+⚠️ **IMPORTANT**: These are live credentials - handle securely!
 
 ## 📋 Essential Steps
 

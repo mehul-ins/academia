@@ -1,6 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
-
 // Test with anon key first
 const supabaseAnon = createClient(
     process.env.SUPABASE_URL,
