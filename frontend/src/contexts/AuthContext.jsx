@@ -17,37 +17,63 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Get initial session
+        // Get initial session with timeout
         const getInitialSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user ?? null);
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                setUser(session?.user ?? null);
 
-            if (session?.user) {
-                await fetchProfile(session.user.id);
+                if (session?.user) {
+                    await fetchProfile(session.user.id);
+                }
+
+                setLoading(false);
+            } catch (error) {
+                console.error('Error getting initial session:', error);
+                setLoading(false); // Always set loading to false, even on error
             }
-
-            setLoading(false);
         };
+
+        // Set a timeout to prevent infinite loading
+        const timeout = setTimeout(() => {
+            console.log('Auth timeout - setting loading to false');
+            setLoading(false);
+        }, 3000);
 
         getInitialSession();
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                setUser(session?.user ?? null);
+                try {
+                    setUser(session?.user ?? null);
 
-                if (session?.user) {
-                    await fetchProfile(session.user.id);
-                } else {
-                    setProfile(null);
+                    if (session?.user) {
+                        await fetchProfile(session.user.id);
+                    } else {
+                        setProfile(null);
+                    }
+
+                    setLoading(false);
+                } catch (error) {
+                    console.error('Error in auth state change:', error);
+                    setLoading(false);
                 }
-
-                setLoading(false);
             }
         );
 
-        return () => subscription.unsubscribe();
+        return () => {
+            clearTimeout(timeout);
+            subscription.unsubscribe();
+        };
     }, []);
+
+    // Auto-refresh profile if user exists but profile is missing (e.g., after navigation)
+    useEffect(() => {
+        if (user && !profile && !loading) {
+            fetchProfile(user.id);
+        }
+    }, [user, profile, loading]);
 
     const fetchProfile = async (userId) => {
         try {
@@ -59,12 +85,14 @@ export const AuthProvider = ({ children }) => {
 
             if (error && error.code !== 'PGRST116') {
                 console.error('Error fetching profile:', error);
+                setLoading(false); // Always clear loading on error
                 return;
             }
 
             setProfile(data);
         } catch (err) {
             console.error('Error fetching profile:', err);
+            setLoading(false); // Always clear loading on error
         }
     };
 
@@ -79,10 +107,20 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        setUser(null);
-        setProfile(null);
+        try {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error('Supabase logout error:', error);
+                // Don't throw error, just clear local state
+            }
+        } catch (err) {
+            console.error('Logout error:', err);
+            // Don't throw error, just clear local state
+        } finally {
+            // Always clear local state
+            setUser(null);
+            setProfile(null);
+        }
     };
 
     const register = async (email, password, profileData) => {

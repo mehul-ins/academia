@@ -6,7 +6,11 @@ import {
 } from 'react-icons/fi';
 import { verificationAPI, publicVerificationAPI } from '../lib/api';
 
-const VerificationPage = ({ onVerificationSuccess, onShowRegister }) => {
+const VerificationPage = ({ onVerificationSuccess, onShowRegister, onShowInstitutes }) => {
+  // Provide default no-op for onShowInstitutes to prevent ReferenceError
+  VerificationPage.defaultProps = {
+    onShowInstitutes: undefined,
+  };
   const [verificationState, setVerificationState] = useState('initial'); // 'initial', 'loading', 'result'
   const [uploadedFile, setUploadedFile] = useState(null);
   const [certificateId, setCertificateId] = useState('');
@@ -302,13 +306,14 @@ const VerificationPage = ({ onVerificationSuccess, onShowRegister }) => {
 
             {/* Secondary Actions */}
             <div className="space-y-4 text-center">
-              <a
-                href="#institutes"
+              <button
+                type="button"
+                onClick={() => onShowInstitutes && onShowInstitutes()}
                 className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium transition-colors"
               >
                 <FiEye className="w-4 h-4" />
                 View Verified Institutes
-              </a>
+              </button>
 
               {/* Register Institute Button */}
               <div className="pt-4 border-t border-gray-200">

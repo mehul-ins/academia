@@ -20,11 +20,10 @@ const AdminDashboard = ({ initialView = 'logs' }) => {
           e.preventDefault();
           setAdminView(viewName);
         }}
-        className={`flex items-center px-4 py-3 text-lg font-medium rounded-lg transition-colors ${
-          isActive
+        className={`flex items-center px-4 py-3 text-lg font-medium rounded-lg transition-colors ${isActive
             ? 'bg-blue-500 text-white shadow-md'
             : 'text-gray-600 hover:bg-gray-200'
-        }`}
+          }`}
       >
         {icon && <span className="mr-3">{icon}</span>}
         <span>{children}</span>
@@ -52,7 +51,7 @@ const AdminDashboard = ({ initialView = 'logs' }) => {
       {/* Main Content */}
       <main className="flex-1 p-8 bg-gray-100">
         {adminView === 'logs' && <LogsView />}
-        {adminView === 'data' && <DataManagementView />}
+        {adminView === 'data' && <DataManagementView key="data-management-view" />}
         {adminView === 'analytics' && <AnalyticsView />}
       </main>
     </div>

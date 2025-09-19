@@ -1,32 +1,38 @@
 import { useState } from 'react';
 import { FiShield, FiCheckCircle, FiGrid, FiLogOut, FiUser } from 'react-icons/fi';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import ErrorBoundary from './ErrorBoundary';
 import VerificationPage from './components/VerificationPage';
 import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
+import InstitutesListPage from './components/InstitutesListPage';
+import InstituteRegisterPage from './components/InstituteRegisterPage';
 
 const AppContent = () => {
   const { user, profile, logout, isAuthenticated, loading } = useAuth();
   const [page, setPage] = useState('verify'); // 'verify', 'admin', 'login', 'register'
   const [adminInitialView, setAdminInitialView] = useState('logs');
+  const [showInstitutes, setShowInstitutes] = useState(false);
+  const [showInstituteRegister, setShowInstituteRegister] = useState(false);
+  const [registeredInstitutes, setRegisteredInstitutes] = useState([]);
 
-  // Show loading spinner while checking auth (only for dashboard access)
-  if (loading && page === 'admin') {
+  // Show loading spinner while checking auth (only for initial load)
+  if (loading && page !== 'verify') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="bg-primary-600 w-16 h-16 rounded-xl mx-auto flex items-center justify-center mb-4">
             <FiShield className="w-8 h-8 text-white animate-pulse" />
           </div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">Loading authentication...</p>
         </div>
       </div>
     );
   }
 
-  // Show login/register pages only when explicitly requested or when accessing dashboard without auth
-  if ((page === 'login' || page === 'register') || (page === 'admin' && !isAuthenticated)) {
+  // Show login/register pages only when explicitly requested
+  if (page === 'login' || page === 'register') {
     if (page === 'register') {
       return (
         <RegisterPage
@@ -46,18 +52,31 @@ const AppContent = () => {
     );
   }
 
+  // If trying to access admin without authentication, redirect to login
+  if (page === 'admin' && !isAuthenticated && !loading) {
+    setPage('login');
+    return null;
+  }
+
   const handleVerificationSuccess = () => {
     // Don't automatically redirect - let users see the verification results
-    console.log('Verification successful - staying on verification page to show results');
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setPage('login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+  const handleLogout = () => {
+    // Clear everything immediately and synchronously
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Reset page state
+    setPage('verify');
+
+    // Call logout but don't wait for it
+    logout().catch(err => console.log('Supabase logout error (ignored):', err));
+
+    // Force reload immediately
+    setTimeout(() => {
+      window.location.replace(window.location.origin);
+    }, 50);
   };
 
   const NavLink = ({ pageName, children, onClick }) => {
@@ -170,24 +189,52 @@ const AppContent = () => {
         </div>
       </header>
 
-      {page === 'verify' ? (
-        <VerificationPage
-          onVerificationSuccess={handleVerificationSuccess}
-          onShowRegister={() => setPage('register')}
-        />
-      ) : (
-        <AdminDashboard initialView={adminInitialView} />
-      )}
+      {/* Main Content */}
+      <main className="flex-1">
+        {showInstituteRegister ? (
+          <InstituteRegisterPage
+            onSuccess={(name) => {
+              setShowInstituteRegister(false);
+              setShowInstitutes(true);
+              if (name && !registeredInstitutes.includes(name)) {
+                setRegisteredInstitutes((prev) => [...prev, name]);
+              }
+            }}
+          />
+        ) : showInstitutes ? (
+          <InstitutesListPage
+            onBack={() => setShowInstitutes(false)}
+            registeredInstitutes={registeredInstitutes}
+          />
+        ) : page === 'verify' ? (
+          <VerificationPage
+            onVerificationSuccess={handleVerificationSuccess}
+            onShowRegister={() => setShowInstituteRegister(true)}
+            onShowInstitutes={() => setShowInstitutes(true)}
+          />
+        ) : page === 'admin' ? (
+          <AdminDashboard initialView={adminInitialView} />
+        ) : (
+          <VerificationPage
+            onVerificationSuccess={handleVerificationSuccess}
+            onShowRegister={() => setShowInstituteRegister(true)}
+            onShowInstitutes={() => setShowInstitutes(true)}
+          />
+        )}
+      </main>
     </div>
   );
 };
 
+
 const App = () => {
   return (
     <AuthProvider>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </AuthProvider>
   );
-};
+}
 
 export default App;

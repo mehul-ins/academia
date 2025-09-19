@@ -18,6 +18,7 @@ const RegisterPage = ({ onRegisterSuccess, onSwitchToLogin, onBack }) => {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const handleChange = (e) => {
         setFormData({
@@ -30,6 +31,7 @@ const RegisterPage = ({ onRegisterSuccess, onSwitchToLogin, onBack }) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setSuccess('');
 
         // Validate passwords match
         if (formData.password !== formData.confirmPassword) {
@@ -87,7 +89,10 @@ const RegisterPage = ({ onRegisterSuccess, onSwitchToLogin, onBack }) => {
                     // Don't fail registration if profile creation fails
                 }
 
-                onRegisterSuccess(data.user);
+                setSuccess('Registration successful! Redirecting to dashboard...');
+                setTimeout(() => {
+                    onRegisterSuccess(data.user);
+                }, 1000);
             }
         } catch (err) {
             setError(err.message || 'Registration failed');
@@ -96,13 +101,25 @@ const RegisterPage = ({ onRegisterSuccess, onSwitchToLogin, onBack }) => {
         }
     };
 
+    // Reset error/success on navigation
+    const handleSwitchToLogin = () => {
+        setError('');
+        setSuccess('');
+        onSwitchToLogin();
+    };
+    const handleBack = () => {
+        setError('');
+        setSuccess('');
+        onBack();
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl mx-auto">
                 {/* Back Button */}
                 {onBack && (
                     <button
-                        onClick={onBack}
+                        onClick={handleBack}
                         className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-6"
                     >
                         <FiArrowLeft className="w-4 h-4 mr-2" />
@@ -334,19 +351,40 @@ const RegisterPage = ({ onRegisterSuccess, onSwitchToLogin, onBack }) => {
                             {error}
                         </div>
                     )}
+                    {success && (
+                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                            {success}
+                        </div>
+                    )}
 
                     <div className="flex gap-4">
                         <button
                             type="button"
-                            onClick={onSwitchToLogin}
+                            onClick={handleSwitchToLogin}
                             className="flex-1 py-3 px-4 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
                         >
                             Back to Login
                         </button>
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="flex-1 py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            disabled={
+                                loading ||
+                                !formData.email ||
+                                !formData.password ||
+                                !formData.confirmPassword ||
+                                !formData.instituteName ||
+                                formData.password !== formData.confirmPassword ||
+                                formData.password.length < 6
+                            }
+                            className={`flex-1 py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-black bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-lg ${loading ||
+                                !formData.email ||
+                                !formData.password ||
+                                !formData.confirmPassword ||
+                                !formData.instituteName ||
+                                formData.password !== formData.confirmPassword ||
+                                formData.password.length < 6
+                                ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
                         >
                             {loading ? 'Registering...' : 'Register Institute'}
                         </button>

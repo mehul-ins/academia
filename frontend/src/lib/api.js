@@ -19,9 +19,15 @@ const apiRequest = async (endpoint, options = {}) => {
             ...options,
         };
 
-        // Add auth token if available
+        // Add Supabase auth token if available
         if (session?.access_token) {
             config.headers.Authorization = `Bearer ${session.access_token}`;
+        } else {
+            // In dev mode, use test JWT token from env if available
+            const devToken = import.meta.env.VITE_DEV_JWT_TOKEN;
+            if (devToken) {
+                config.headers.Authorization = `Bearer ${devToken}`;
+            }
         }
 
         const response = await fetch(url, config);
@@ -191,11 +197,27 @@ export const adminAPI = {
         return apiRequest(`/api/admin/certificates${queryString ? `?${queryString}` : ''}`);
     },
 
-    toggleBlacklist: async (certificateId, blacklisted, reason = '') => {
-        return apiRequest(`/api/admin/certificates/${certificateId}/blacklist`, {
+    toggleBlacklist: async (rollNumber, blacklisted, reason = '') => {
+        return apiRequest(`/api/admin/certificates/${rollNumber}/blacklist`, {
             method: 'PUT',
             body: JSON.stringify({ blacklisted, reason }),
         });
+    },
+};
+
+// Template Management API
+export const templateAPI = {
+    uploadTemplate: async (file) => {
+        const formData = new FormData();
+        formData.append('template', file);
+        return apiRequest('/api/certificates/template', {
+            method: 'POST',
+            headers: {}, // Let browser set Content-Type
+            body: formData,
+        });
+    },
+    listTemplates: async () => {
+        return apiRequest('/api/certificates/templates');
     },
 };
 
@@ -211,5 +233,6 @@ export default {
     verificationAPI,
     certificateAPI,
     adminAPI,
+    templateAPI,
     healthAPI,
 };

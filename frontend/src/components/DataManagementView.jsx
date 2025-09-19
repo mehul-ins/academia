@@ -1,27 +1,55 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { FiUpload, FiTrash2, FiUploadCloud, FiSearch, FiEye, FiEyeOff } from 'react-icons/fi';
 import { certificateAPI, adminAPI } from '../lib/api';
 
+
+
 const DataManagementView = () => {
+  const { user, profile, loading: authLoading, isAuthenticated } = useAuth();
   const [certificates, setCertificates] = useState([]);
   const [blacklistId, setBlacklistId] = useState('');
   const [blacklistReason, setBlacklistReason] = useState('');
   const [uploadFile, setUploadFile] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingCertificates, setLoadingCertificates] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [blacklistLoading, setBlacklistLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const navigate = useNavigate();
+
+  // Only fetch certificates when auth is ready and user is authenticated
+  // Reset loading/error/success state and force fetch on mount or navigation
+  useEffect(() => {
+    setLoadingCertificates(false);
+    setUploadLoading(false);
+    setBlacklistLoading(false);
+    setError('');
+    setSuccess('');
+    if (!authLoading && isAuthenticated) {
+      fetchCertificates(currentPage, searchTerm);
+    }
+    // Optionally, force profile refresh if needed (uncomment if you add a refreshProfile method to AuthContext)
+    // if (user && typeof refreshProfile === 'function') refreshProfile();
+  }, [currentPage, user, authLoading, isAuthenticated]);
+
+  // Force session/profile refresh and redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      // Not authenticated, redirect to login
+      navigate('/login', { replace: true });
+    }
+    // Optionally, could trigger a profile refresh here if needed
+  }, [authLoading, isAuthenticated, navigate]);
 
   const fetchCertificates = async (page = 1, search = '') => {
-    setLoading(true);
+    setLoadingCertificates(true);
     setError('');
-
     try {
       const response = await certificateAPI.getCertificates();
-
       if (response.status === 'success') {
         setCertificates(response.data.certificates);
       }
@@ -29,13 +57,9 @@ const DataManagementView = () => {
       console.error('Error fetching certificates:', error);
       setError('Failed to fetch certificates');
     } finally {
-      setLoading(false);
+      setLoadingCertificates(false);
     }
   };
-
-  useEffect(() => {
-    fetchCertificates(currentPage, searchTerm);
-  }, [currentPage]);
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -68,18 +92,20 @@ const DataManagementView = () => {
 
     try {
       const response = await certificateAPI.bulkUpload(uploadFile);
-
-      if (response.status === 'success') {
-        setSuccess(`Successfully uploaded ${response.data.count || 'certificates'}`);
+      if (response && response.status === 'success') {
+        const summary = response.summary || {};
+        setSuccess(
+          `Upload complete: ${summary.inserted || 0} inserted, ${summary.updated || 0} updated, ${summary.failed || 0} failed.`
+        );
         setUploadFile(null);
         // Refresh certificates list
         fetchCertificates(currentPage, searchTerm);
       } else {
-        setError(response.message || 'Upload failed');
+        setError((response && response.message) || 'Upload failed (unexpected response)');
       }
     } catch (error) {
       console.error('Upload error:', error);
-      setError(error.message || 'Upload failed');
+      setError((error && error.message) || 'Upload failed (exception)');
     } finally {
       setUploadLoading(false);
     }
@@ -87,7 +113,7 @@ const DataManagementView = () => {
 
   const handleBlacklist = async () => {
     if (!blacklistId.trim()) {
-      setError('Please enter a certificate ID or institution name');
+      setError('Please enter a roll number or institution name');
       return;
     }
 
@@ -102,27 +128,27 @@ const DataManagementView = () => {
         blacklistReason || 'Blacklisted via admin panel'
       );
 
-      if (response.status === 'success') {
+      if (response && response.status === 'success') {
         setSuccess(`Successfully blacklisted: ${blacklistId}`);
         setBlacklistId('');
         setBlacklistReason('');
         // Refresh certificates list
         fetchCertificates(currentPage, searchTerm);
       } else {
-        setError(response.message || 'Blacklisting failed');
+        setError((response && response.message) || 'Blacklisting failed (unexpected response)');
       }
     } catch (error) {
       console.error('Blacklist error:', error);
-      setError(error.message || 'Blacklisting failed');
+      setError((error && error.message) || 'Blacklisting failed (exception)');
     } finally {
       setBlacklistLoading(false);
     }
   };
 
-  const handleToggleBlacklist = async (certificateId, currentBlacklistStatus) => {
+  const handleToggleBlacklist = async (rollNumber, currentBlacklistStatus) => {
     try {
       const response = await adminAPI.toggleBlacklist(
-        certificateId,
+        rollNumber,
         !currentBlacklistStatus,
         currentBlacklistStatus ? 'Removed from blacklist' : 'Added to blacklist'
       );
@@ -139,6 +165,12 @@ const DataManagementView = () => {
   const handleSearch = () => {
     setCurrentPage(1);
     fetchCertificates(1, searchTerm);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setCurrentPage(1);
+    fetchCertificates(1, '');
   };
 
   return (
@@ -208,16 +240,16 @@ const DataManagementView = () => {
             Blacklist Certificates
           </h3>
           <p className="text-gray-600 mb-6">
-            Permanently flag a certificate ID to prevent verification.
+            Permanently flag a roll number to prevent verification.
           </p>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Certificate ID
+                Roll Number
               </label>
               <input
                 type="text"
-                placeholder="e.g., CERT-2024-001"
+                placeholder="e.g., 21BCE1234"
                 value={blacklistId}
                 onChange={(e) => setBlacklistId(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -255,7 +287,7 @@ const DataManagementView = () => {
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by certificate ID, student name, or institution..."
+                placeholder="Search by roll number, student name, or institution..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -268,10 +300,17 @@ const DataManagementView = () => {
             >
               Search
             </button>
+            <button
+              onClick={handleClearSearch}
+              className="bg-gray-300 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors"
+              disabled={!searchTerm}
+            >
+              Clear Search
+            </button>
           </div>
         </div>
 
-        {loading ? (
+        {loadingCertificates ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading certificates...</p>
@@ -285,7 +324,7 @@ const DataManagementView = () => {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left font-semibold text-gray-600 p-4">Certificate ID</th>
+                  <th className="text-left font-semibold text-gray-600 p-4">Roll Number</th>
                   <th className="text-left font-semibold text-gray-600 p-4">Student Name</th>
                   <th className="text-left font-semibold text-gray-600 p-4">Institution</th>
                   <th className="text-left font-semibold text-gray-600 p-4">Course</th>
@@ -295,11 +334,11 @@ const DataManagementView = () => {
               </thead>
               <tbody>
                 {certificates.map((cert) => (
-                  <tr key={cert.certificateId} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="p-4 text-gray-800 font-medium">{cert.certificateId}</td>
-                    <td className="p-4 text-gray-800">{cert.studentName || 'N/A'}</td>
+                  <tr key={cert.roll_number || cert.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="p-4 text-gray-800 font-medium">{cert.roll_number || 'N/A'}</td>
+                    <td className="p-4 text-gray-800">{cert.student_name || 'N/A'}</td>
                     <td className="p-4 text-gray-800">{cert.institution || 'N/A'}</td>
-                    <td className="p-4 text-gray-800">{cert.course || 'N/A'}</td>
+                    <td className="p-4 text-gray-800">{cert.course_name || 'N/A'}</td>
                     <td className="p-4">
                       <span className={`px-3 py-1 text-sm font-semibold rounded-full ${cert.blacklisted
                         ? 'bg-red-100 text-red-800'
@@ -310,7 +349,7 @@ const DataManagementView = () => {
                     </td>
                     <td className="p-4">
                       <button
-                        onClick={() => handleToggleBlacklist(cert.certificateId, cert.blacklisted)}
+                        onClick={() => handleToggleBlacklist(cert.roll_number, cert.blacklisted)}
                         className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${cert.blacklisted
                           ? 'bg-green-100 text-green-800 hover:bg-green-200'
                           : 'bg-red-100 text-red-800 hover:bg-red-200'
@@ -327,6 +366,8 @@ const DataManagementView = () => {
           </div>
         )}
       </div>
+
+      {/* Template Manager removed as per request */}
     </div>
   );
 };

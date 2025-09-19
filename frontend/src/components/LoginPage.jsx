@@ -7,11 +7,13 @@ const LoginPage = ({ onLoginSuccess, onSwitchToRegister, onBack }) => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setSuccess('');
 
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -22,7 +24,10 @@ const LoginPage = ({ onLoginSuccess, onSwitchToRegister, onBack }) => {
             if (error) throw error;
 
             if (data.user) {
-                onLoginSuccess(data.user);
+                setSuccess('Login successful! Redirecting...');
+                setTimeout(() => {
+                    onLoginSuccess(data.user);
+                }, 800);
             }
         } catch (err) {
             setError(err.message || 'Login failed');
@@ -31,13 +36,25 @@ const LoginPage = ({ onLoginSuccess, onSwitchToRegister, onBack }) => {
         }
     };
 
+    // Reset error/success on navigation
+    const handleSwitchToRegister = () => {
+        setError('');
+        setSuccess('');
+        onSwitchToRegister();
+    };
+    const handleBack = () => {
+        setError('');
+        setSuccess('');
+        onBack();
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
                 {/* Back Button */}
                 {onBack && (
                     <button
-                        onClick={onBack}
+                        onClick={handleBack}
                         className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
                     >
                         <FiArrowLeft className="w-4 h-4 mr-2" />
@@ -122,12 +139,18 @@ const LoginPage = ({ onLoginSuccess, onSwitchToRegister, onBack }) => {
                             {error}
                         </div>
                     )}
+                    {success && (
+                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                            {success}
+                        </div>
+                    )}
 
                     <div>
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            disabled={loading || !email || !password}
+                            className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-black bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-lg ${loading || !email || !password ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
                         >
                             {loading ? 'Signing in...' : 'Sign in'}
                         </button>
@@ -138,7 +161,7 @@ const LoginPage = ({ onLoginSuccess, onSwitchToRegister, onBack }) => {
                             Don't have an account?{' '}
                             <button
                                 type="button"
-                                onClick={onSwitchToRegister}
+                                onClick={handleSwitchToRegister}
                                 className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
                             >
                                 Register your institute
