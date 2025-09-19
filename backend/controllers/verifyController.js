@@ -161,6 +161,7 @@ exports.verifyCertificate = async (req, res) => {
             .digest('hex');
 
         let blockchainVerified = true;
+        let blockchainScore = null;
         try {
             const blockchainResponse = await axios.post(`${BLOCKCHAIN_SERVICE_URL}/api/verify-hash`, {
                 certificateId: certId,
@@ -170,11 +171,13 @@ exports.verifyCertificate = async (req, res) => {
             });
 
             blockchainVerified = blockchainResponse.data.verified;
-            console.log('Blockchain verification result:', blockchainVerified);
+            blockchainScore = blockchainResponse.data.score || blockchainResponse.data.blockNumber || null;
+            console.log('Blockchain verification result:', blockchainVerified, 'Score:', blockchainScore);
         } catch (blockchainError) {
             console.error('Blockchain Service Error:', blockchainError.message);
             // If blockchain service is unavailable, we'll proceed but note the issue
             blockchainVerified = null;
+            blockchainScore = null;
         }
 
         // Step 6: Determine final status
@@ -208,7 +211,8 @@ exports.verifyCertificate = async (req, res) => {
                 issueDate: dbCertificate.issueDate,
                 grade: dbCertificate.grade,
                 verifiedAt: new Date().toISOString(),
-                blockchainVerified: blockchainVerified
+                blockchainVerified: blockchainVerified,
+                blockchainScore: blockchainScore
             }
         });
 

@@ -93,31 +93,32 @@ const VerificationPage = ({ onVerificationSuccess, onShowRegister }) => {
 
   // Transform backend response to frontend format
   const transformBackendResponse = (response) => {
-    const { status, data } = response;
+    const { status, certificate } = response.data || {};
 
-    if (status === 'success' && data.result === 'VALID') {
+    if (status === 'Valid' && certificate) {
       return {
         verdict: 'VALID',
         icon: <FiCheckCircle className="w-16 h-16 mx-auto" />,
         bgColor: 'bg-green-100',
         textColor: 'text-green-800',
         borderColor: 'border-green-500',
-        details: data.details || {},
-        ocrConfidence: data.ocrConfidence || 0,
+        details: certificate || {},
+        ocrConfidence: certificate.ocrConfidence || 0,
         checks: {
           database: {
-            status: data.databaseMatch ? 'Matched' : 'Not Found',
-            icon: data.databaseMatch ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
-            success: data.databaseMatch
+            status: 'Matched',
+            icon: <FiCheckCircle className="text-green-500" />,
+            success: true
           },
           blockchain: {
-            status: data.blockchainValid ? 'Valid' : 'Invalid',
-            icon: data.blockchainValid ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
-            success: data.blockchainValid
+            status: certificate.blockchainVerified ? 'Valid' : 'Invalid',
+            icon: certificate.blockchainVerified ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
+            success: certificate.blockchainVerified,
+            score: certificate.blockchainScore || null
           },
-          aiScore: data.aiScore || 0
+          aiScore: certificate.aiScore || 0
         },
-        reasons: data.reasons || []
+        reasons: response.data.reasons || []
       };
     } else {
       return {
@@ -126,22 +127,23 @@ const VerificationPage = ({ onVerificationSuccess, onShowRegister }) => {
         bgColor: 'bg-red-100',
         textColor: 'text-red-800',
         borderColor: 'border-red-500',
-        details: data.details || {},
-        ocrConfidence: data.ocrConfidence || 0,
+        details: certificate || {},
+        ocrConfidence: certificate?.ocrConfidence || 0,
         checks: {
           database: {
-            status: data.databaseMatch ? 'Matched' : 'Not Found',
-            icon: data.databaseMatch ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
-            success: data.databaseMatch
+            status: 'Not Found',
+            icon: <FiXCircle className="text-red-500" />,
+            success: false
           },
           blockchain: {
-            status: data.blockchainValid ? 'Valid' : 'Invalid',
-            icon: data.blockchainValid ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
-            success: data.blockchainValid
+            status: certificate?.blockchainVerified ? 'Valid' : 'Invalid',
+            icon: certificate?.blockchainVerified ? <FiCheckCircle className="text-green-500" /> : <FiXCircle className="text-red-500" />,
+            success: certificate?.blockchainVerified,
+            score: certificate?.blockchainScore || null
           },
-          aiScore: data.aiScore || 0
+          aiScore: certificate?.aiScore || 0
         },
-        reasons: data.reasons || ['Certificate could not be verified']
+        reasons: response.data.reasons || ['Certificate could not be verified']
       };
     }
   };
@@ -410,31 +412,55 @@ const VerificationPage = ({ onVerificationSuccess, onShowRegister }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Name</label>
-                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.name || 'Not available'}</p>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Name (Extracted)</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.Name || 'Not available'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Roll Number</label>
-                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.rollNo || 'Not available'}</p>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Roll Number (Extracted)</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details['Roll Number'] || 'Not available'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Certificate ID</label>
-                      <p className="text-lg font-medium text-gray-900 font-mono">{verificationResult.details.certificateId || 'Not available'}</p>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">CGPA (Extracted)</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.CGPA || 'Not available'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Issued Year (Extracted)</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details['Issued Year'] || 'Not available'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Course (Extracted)</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.Course || 'Not available'}</p>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Marks/Grade</label>
-                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.marks || 'Not available'}</p>
+                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Database Match</label>
+                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.dbMatch ? 'Found' : 'Not found'}</p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Date Issued</label>
-                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.dateIssued || 'Not available'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Issuing Authority</label>
-                      <p className="text-lg font-medium text-gray-900">{verificationResult.details.issuingAuthority || 'Not available'}</p>
-                    </div>
+                    {verificationResult.details.dbMatch && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Name (DB)</label>
+                          <p className="text-lg font-medium text-gray-900">{verificationResult.details.dbMatch.studentName || 'Not available'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Roll Number (DB)</label>
+                          <p className="text-lg font-medium text-gray-900">{verificationResult.details.dbMatch.rollNumber || 'Not available'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Course (DB)</label>
+                          <p className="text-lg font-medium text-gray-900">{verificationResult.details.dbMatch.course || 'Not available'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">CGPA (DB)</label>
+                          <p className="text-lg font-medium text-gray-900">{verificationResult.details.dbMatch.CGPA || 'Not available'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Issued Year (DB)</label>
+                          <p className="text-lg font-medium text-gray-900">{verificationResult.details.dbMatch.issueDate || verificationResult.details.dbMatch['Issued Year'] || 'Not available'}</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -488,6 +514,9 @@ const VerificationPage = ({ onVerificationSuccess, onShowRegister }) => {
                       <div>
                         <h4 className="font-semibold text-gray-900">Blockchain Verification</h4>
                         <p className="text-sm text-gray-600">Immutable hash validation</p>
+                        {verificationResult.checks?.blockchain?.score !== null && (
+                          <span className="block text-xs text-gray-500 mt-1">Score: {verificationResult.checks.blockchain.score}</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
