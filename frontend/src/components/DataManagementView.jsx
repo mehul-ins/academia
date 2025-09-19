@@ -20,13 +20,7 @@ const DataManagementView = () => {
     setError('');
 
     try {
-      const params = {
-        page,
-        limit: 10,
-        ...(search && { search })
-      };
-
-      const response = await adminAPI.getCertificates(params);
+      const response = await certificateAPI.getCertificates();
 
       if (response.status === 'success') {
         setCertificates(response.data.certificates);
@@ -308,8 +302,8 @@ const DataManagementView = () => {
                     <td className="p-4 text-gray-800">{cert.course || 'N/A'}</td>
                     <td className="p-4">
                       <span className={`px-3 py-1 text-sm font-semibold rounded-full ${cert.blacklisted
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-green-100 text-green-800'
                         }`}>
                         {cert.blacklisted ? 'Blacklisted' : 'Active'}
                       </span>
@@ -318,8 +312,8 @@ const DataManagementView = () => {
                       <button
                         onClick={() => handleToggleBlacklist(cert.certificateId, cert.blacklisted)}
                         className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${cert.blacklisted
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                          : 'bg-red-100 text-red-800 hover:bg-red-200'
                           }`}
                       >
                         {cert.blacklisted ? <FiEye className="w-4 h-4" /> : <FiEyeOff className="w-4 h-4" />}

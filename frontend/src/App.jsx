@@ -22,15 +22,9 @@ const AppContent = () => {
   }
 
   const handleVerificationSuccess = () => {
-    // If not authenticated, redirect to login first
-    if (!isAuthenticated) {
-      setPage('admin'); // This will trigger the login page
-      setAdminInitialView('analytics');
-    } else {
-      // If authenticated, go directly to analytics
-      setPage('admin');
-      setAdminInitialView('analytics');
-    }
+    // Don't automatically redirect - let users see the verification results
+    // They can manually navigate to admin dashboard if needed
+    console.log('Verification successful - staying on verification page to show results');
   };
 
   // Show admin login for admin pages if not authenticated
@@ -58,11 +52,10 @@ const AppContent = () => {
           e.preventDefault();
           setPage(pageName);
         }}
-        className={`flex items-center space-x-2 font-medium px-4 py-2 rounded-lg transition-all duration-200 ${
-          isActive
+        className={`flex items-center space-x-2 font-medium px-4 py-2 rounded-lg transition-all duration-200 ${isActive
             ? 'bg-primary-600 text-white shadow-trust'
             : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50'
-        }`}
+          }`}
       >
         {children}
       </a>
