@@ -1,25 +1,12 @@
 import { useState } from 'react';
-import { FiShield, FiCheckCircle, FiGrid, FiLogOut, FiUser } from 'react-icons/fi';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { FiShield, FiCheckCircle, FiGrid } from 'react-icons/fi';
+import { AuthProvider } from './contexts/AuthContext';
 import VerificationPage from './components/VerificationPage';
 import AdminDashboard from './components/AdminDashboard';
-import LoginPage from './components/LoginPage';
 
 const AppContent = () => {
   const [page, setPage] = useState('verify'); // 'verify' or 'admin'
   const [adminInitialView, setAdminInitialView] = useState('logs');
-  const { user, logout, isAdmin, isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   const handleVerificationSuccess = () => {
     // Don't automatically redirect - let users see the verification results
@@ -27,23 +14,8 @@ const AppContent = () => {
     console.log('Verification successful - staying on verification page to show results');
   };
 
-  // Show admin login for admin pages if not authenticated
-  if (page === 'admin' && !isAuthenticated) {
-    return <LoginPage />;
-  }
-
-  const NavLink = ({ pageName, children, requiresAuth = false }) => {
+  const NavLink = ({ pageName, children }) => {
     const isActive = page === pageName;
-
-    // If admin page is required but user is not admin, show disabled state
-    if (requiresAuth && isAuthenticated && !isAdmin()) {
-      return (
-        <span className="flex items-center space-x-2 text-gray-400 cursor-not-allowed font-medium">
-          {children}
-          <span className="text-xs bg-gray-100 px-2 py-1 rounded">(Admin Only)</span>
-        </span>
-      );
-    }
 
     return (
       <a
@@ -83,39 +55,10 @@ const AppContent = () => {
                 <FiCheckCircle className="w-5 h-5" />
                 <span>Verify Certificate</span>
               </NavLink>
-              <NavLink pageName="admin" requiresAuth={true}>
+              <NavLink pageName="admin">
                 <FiGrid className="w-5 h-5" />
                 <span>Dashboard</span>
               </NavLink>
-
-              {/* User Info and Logout */}
-              {isAuthenticated && (
-                <div className="flex items-center space-x-4 ml-8 pl-8 border-l border-gray-200">
-                  <div className="flex items-center space-x-3 text-gray-700">
-                    <div className="bg-gray-100 p-2 rounded-lg">
-                      <FiUser className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{user.email}</p>
-                      {isAdmin() && (
-                        <span className="trust-badge text-xs">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      logout();
-                      setPage('verify');
-                    }}
-                    className="flex items-center space-x-2 text-gray-600 hover:text-danger-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
-                  >
-                    <FiLogOut className="w-4 h-4" />
-                    <span className="text-sm font-medium">Logout</span>
-                  </button>
-                </div>
-              )}
             </nav>
           </div>
         </div>

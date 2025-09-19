@@ -5,10 +5,8 @@ import {
   FiSearch, FiEye, FiAward
 } from 'react-icons/fi';
 import { verificationAPI } from '../lib/api';
-import { useAuth } from '../contexts/AuthContext';
 
 const VerificationPage = ({ onVerificationSuccess }) => {
-  const { isAuthenticated, isAdmin } = useAuth();
   const [verificationState, setVerificationState] = useState('initial'); // 'initial', 'loading', 'result'
   const [uploadedFile, setUploadedFile] = useState(null);
   const [certificateId, setCertificateId] = useState('');
@@ -58,11 +56,7 @@ const VerificationPage = ({ onVerificationSuccess }) => {
       setVerificationResult(transformedResult);
       setVerificationState('result');
 
-      if (
-        transformedResult.verdict === 'VALID' &&
-        isAuthenticated &&
-        isAdmin()
-      ) {
+      if (transformedResult.verdict === 'VALID') {
         // Optional: Automatically navigate, or wait for user to click
         // onVerificationSuccess();
       }

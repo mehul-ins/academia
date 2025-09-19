@@ -7,10 +7,6 @@ module.exports = (sequelize) => {
             autoIncrement: true,
             primaryKey: true,
         },
-        userId: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-        },
         certificateId: DataTypes.STRING,
         ocrData: DataTypes.JSON,
         result: DataTypes.STRING,

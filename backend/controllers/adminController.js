@@ -1,4 +1,4 @@
-const { User, Certificate, Log } = require('../models');
+const { Certificate, Log } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../models');
 
@@ -7,7 +7,6 @@ const adminController = {
     getStats: async (req, res) => {
         try {
             // Get counts for dashboard
-            const totalUsers = await User.count();
             const totalCertificates = await Certificate.count();
             const totalVerifications = await Log.count();
             const blacklistedCertificates = await Certificate.count({
@@ -78,7 +77,6 @@ const adminController = {
                 status: 'success',
                 data: {
                     overview: {
-                        totalUsers,
                         totalCertificates,
                         totalVerifications,
                         blacklistedCertificates,
@@ -130,14 +128,6 @@ const adminController = {
 
             const { count, rows: logs } = await Log.findAndCountAll({
                 where: whereConditions,
-                include: [
-                    {
-                        model: User,
-                        as: 'user',
-                        attributes: ['id', 'email'],
-                        required: false
-                    }
-                ],
                 order: [['createdAt', 'DESC']],
                 limit,
                 offset
@@ -153,10 +143,6 @@ const adminController = {
                         certificateId: log.certificateId,
                         result: log.result,
                         reasons: log.reasons ? JSON.parse(log.reasons) : [],
-                        user: log.user ? {
-                            id: log.user.id,
-                            email: log.user.email
-                        } : null,
                         createdAt: log.createdAt,
                         ocrData: log.ocrData
                     })),
@@ -175,58 +161,6 @@ const adminController = {
             res.status(500).json({
                 status: 'error',
                 reasons: ['Failed to fetch verification logs']
-            });
-        }
-    },
-
-    // Get users with pagination and search
-    getUsers: async (req, res) => {
-        try {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 20;
-            const offset = (page - 1) * limit;
-            const search = req.query.search || '';
-
-            const whereConditions = {};
-            if (search) {
-                whereConditions.email = {
-                    [Op.like]: `%${search}%`
-                };
-            }
-
-            if (req.query.role) {
-                whereConditions.role = req.query.role;
-            }
-
-            const { count, rows: users } = await User.findAndCountAll({
-                where: whereConditions,
-                attributes: ['id', 'email', 'role', 'createdAt'],
-                order: [['createdAt', 'DESC']],
-                limit,
-                offset
-            });
-
-            const totalPages = Math.ceil(count / limit);
-
-            res.json({
-                status: 'success',
-                data: {
-                    users,
-                    pagination: {
-                        currentPage: page,
-                        totalPages,
-                        totalItems: count,
-                        hasNext: page < totalPages,
-                        hasPrev: page > 1
-                    }
-                }
-            });
-
-        } catch (error) {
-            console.error('Admin users error:', error);
-            res.status(500).json({
-                status: 'error',
-                reasons: ['Failed to fetch users']
             });
         }
     },
@@ -311,7 +245,6 @@ const adminController = {
 
             // Log the blacklist action
             await Log.create({
-                userId: req.user.id,
                 certificateId,
                 result: blacklisted ? 'blacklisted' : 'unblacklisted',
                 reasons: JSON.stringify([reason || `Certificate ${blacklisted ? 'blacklisted' : 'unblacklisted'} by admin`])
@@ -331,45 +264,6 @@ const adminController = {
             res.status(500).json({
                 status: 'error',
                 reasons: ['Failed to update blacklist status']
-            });
-        }
-    },
-
-    // Delete user (admin only)
-    deleteUser: async (req, res) => {
-        try {
-            const { userId } = req.params;
-
-            // Prevent deleting the current admin user
-            if (parseInt(userId) === req.user.id) {
-                return res.status(400).json({
-                    status: 'error',
-                    reasons: ['Cannot delete your own account']
-                });
-            }
-
-            const user = await User.findByPk(userId);
-            if (!user) {
-                return res.status(404).json({
-                    status: 'error',
-                    reasons: ['User not found']
-                });
-            }
-
-            await user.destroy();
-
-            res.json({
-                status: 'success',
-                data: {
-                    message: 'User deleted successfully'
-                }
-            });
-
-        } catch (error) {
-            console.error('Delete user error:', error);
-            res.status(500).json({
-                status: 'error',
-                reasons: ['Failed to delete user']
             });
         }
     }

@@ -24,13 +24,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // Import routes
-const authRoutes = require('./routes/auth');
 const verifyRoutes = require('./routes/verify');
 const certificateRoutes = require('./routes/certificates');
 const adminRoutes = require('./routes/admin');
 
 // Mount routes
-app.use('/api/auth', authRoutes);
 app.use('/api/verify', verifyRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/admin', adminRoutes);

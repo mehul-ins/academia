@@ -2,7 +2,6 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const verifyController = require('../controllers/verifyController');
-const authMiddleware = require('../middleware/authMiddleware');
 
 // Configure Multer for file upload
 const storage = multer.memoryStorage(); // Store files in memory for processing
@@ -41,7 +40,7 @@ const upload = multer({
  * @access  Protected (requires authentication)
  * @body    file: Certificate image/PDF file
  */
-router.post('/', authMiddleware, upload.single('certificate'), (req, res, next) => {
+router.post('/', upload.single('certificate'), (req, res, next) => {
     // Handle multer errors
     if (req.multerError) {
         return res.status(400).json({

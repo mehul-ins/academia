@@ -248,8 +248,6 @@ class DeploymentManager {
             this.log('\n📋 Next steps:', 'info');
             this.log('1. Start the server: npm start', 'info');
             this.log('2. Access health check: http://localhost:5002/health', 'info');
-            this.log('3. Login with admin credentials: admin@academia.com / admin123', 'info');
-            this.log('4. Change default admin password immediately!', 'warning');
 
             if (report.recommendations.length > 0) {
                 this.log('\n💡 Recommendations:', 'warning');

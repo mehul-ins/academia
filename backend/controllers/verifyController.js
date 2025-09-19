@@ -14,8 +14,6 @@ const BLOCKCHAIN_SERVICE_URL = process.env.BLOCKCHAIN_SERVICE_URL || 'http://loc
 exports.verifyCertificate = async (req, res) => {
     let logData = {
         action: 'CERTIFICATE_VERIFICATION',
-        userId: req.user ? req.user.id : null,
-        userEmail: req.user ? req.user.email : null,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent'),
         timestamp: new Date(),
